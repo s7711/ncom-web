@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>OxTS Navigation</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="favicon.png">
+  </head>
+  <body>
+    <h1><a href="index.html" style=text-decoration:none>Nav decoder</a></h1>
+    <p>
+      Send: <input type="text" id="send_text" onkeypress="javascript:doit_onkeypress(event);" />
+    </p>
+    <table border=1 class="dataframe, dataframe2">
+      <thead>
+        <tr> <th>Measurement</th>  <th>Value</th> <th>Units</th> </tr>
+      </thead>
+      <tr> <td>GpsTime</td>         <td id="GpsTime">---</td> <td></td> </tr>
+      <tr> <td>Latitude</td>        <td id="Lat">---</td> <td>deg</td> </tr>
+      <tr> <td>Longitude</td>       <td id="Lon">---</td> <td>deg</td> </tr>
+      <tr> <td>Altitude</td>        <td id="Alt">---</td> <td>m</td> </tr>
+      <tr> <td>Velocity North</td>  <td id="Vn">---</td> <td>m/s</td> </tr>
+      <tr> <td>Velocity East</td>   <td id="Ve">---</td> <td>m/s</td> </tr>
+      <tr> <td>Velocity Down</td>   <td id="Vd">---</td> <td>m/s</td> </tr>
+      <tr> <td>Acceleration X</td>  <td id="Ax">---</td> <td>m/s&sup2;</td> </tr>
+      <tr> <td>Acceleration Y</td>  <td id="Ay">---</td> <td>m/s&sup2;</td> </tr>
+      <tr> <td>Acceleration Z</td>  <td id="Az">---</td> <td>m/s&sup2;</td> </tr>
+      <tr> <td>Heading</td>         <td id="Heading">---</td> <td>deg</td> </tr>
+      <tr> <td>Pitch</td>           <td id="Pitch">---</td> <td>deg</td> </tr>
+      <tr> <td>Roll</td>            <td id="Roll">---</td> <td>deg</td> </tr>
+      <tr> <td>Ang Rate X</td>      <td id="Wx">---</td> <td>deg/s</td> </tr>
+      <tr> <td>Ang Rate Y</td>      <td id="Wy">---</td> <td>deg/s</td> </tr>
+      <tr> <td>Ang Rate Z</td>      <td id="Wz">---</td> <td>deg/s</td> </tr>
+    </table>
+
+    <script language="javascript" type="text/javascript">
+      function init()
+      {
+        disconnected = true
+        doConnect();
+      }
+
+      timer = setInterval(function() { 
+          if(disconnected == true) {
+            doConnect();
+          }
+        }, 5000)
+
+      function doConnect()
+      {
+        websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/nav.json");
+        websocket.onopen = function(evt) { onOpen(evt) };
+        websocket.onclose = function(evt) { onClose(evt) };
+        websocket.onmessage = function(evt) { onMessage(evt) };
+        websocket.onerror = function(evt) { onError(evt) };
+      }
+
+      function onOpen(evt)
+      {
+        disconnected = false;
+      }
+
+      function onClose(evt)
+      {
+        disconnected = true;
+      }
+
+      function onMessage(evt)
+      {
+        let nav = JSON.parse(evt.data);
+        document.getElementById("GpsTime").innerHTML = nav.GpsTime;
+        document.getElementById("Lat").innerHTML = (nav.Lat*57.295779513).toFixed(8);
+        document.getElementById("Lon").innerHTML = (nav.Lon*57.295779513).toFixed(8);
+        document.getElementById("Alt").innerHTML = nav.Alt.toFixed(3);
+        document.getElementById("Vn").innerHTML = nav.Vn.toFixed(2);
+        document.getElementById("Ve").innerHTML = nav.Ve.toFixed(2);
+        document.getElementById("Vd").innerHTML = nav.Vd.toFixed(2);
+        document.getElementById("Ax").innerHTML = nav.Ax.toFixed(2);
+        document.getElementById("Ay").innerHTML = nav.Ay.toFixed(2);
+        document.getElementById("Az").innerHTML = nav.Az.toFixed(2);
+        document.getElementById("Heading").innerHTML = nav.Heading.toFixed(2);
+        document.getElementById("Pitch").innerHTML = nav.Pitch.toFixed(2);
+        document.getElementById("Roll").innerHTML = nav.Roll.toFixed(2);
+        document.getElementById("Wx").innerHTML = nav.Wx.toFixed(2);
+        document.getElementById("Wy").innerHTML = nav.Wy.toFixed(2);
+        document.getElementById("Wz").innerHTML = nav.Wz.toFixed(2);
+      }
+      
+      function updateId(status,id)
+      {
+        s = status[id.substring(3)];
+        if (s != undefined)
+          document.getElementById(id).innerHTML = s;
+      }
+      
+      function updateIdF(status,id,precision)
+      {
+        s = status[id.substring(4)];
+        if (s != undefined)
+          document.getElementById(id).innerHTML = s.toFixed(precision);      
+      }
+
+      function onError(evt)
+      {
+        websocket.close();
+        disconnected = true;
+      }
+
+      function doit_onkeypress(event)
+      {
+        if (event.keyCode == 13 || event.which == 13)
+        {
+          websocket.send(document.getElementById("send_text").value);
+        }
+      }
+
+      window.addEventListener("load", init, false);
+
+    </script>
+  </body>
+</html>

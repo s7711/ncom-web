@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>OxTS Status</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="favicon.png">
+</head>
+<body>
+  <h1><a href="index.html" style=text-decoration:none>Navigation Status</a></h1>
+  <p>
+    Send: <input type="text" id="send_text" onkeypress="javascript:doit_onkeypress(event);" />
+  </p>
+  <h2>Accuracy</h2>
+  <table border=1 class="dataframe, dataframe2">
+    <thead>
+      <tr style="text-align:right;">
+        <th>Measurement</th>
+        <th>Value</th>
+        <th>Units</th>
+      </tr>
+    </thead>
+    <!-- Note: the id of the <td> cell used to match the key in status -->
+    <!-- See onMessage() for format -->
+    <tr> <td>Position north accuracy</td>  <td id="mf3_NorthAcc">---</td> <td>m</td> </tr>
+    <tr> <td>Position east accuracy</td>  <td id="mf3_EastAcc">---</td> <td>m</td> </tr>
+    <tr> <td>Position down accuracy</td>  <td id="mf3_AltAcc">---</td> <td>m</td> </tr>
+    <tr> <td>Velocity north accuracy</td>  <td id="mf3_VnAcc">---</td> <td>m/s</td> </tr>
+    <tr> <td>Velocity east accuracy</td>  <td id="mf3_VeAcc">---</td> <td>m/s</td> </tr>
+    <tr> <td>Velocity down accuracy</td>  <td id="mf3_VdAcc">---</td> <td>m/s</td> </tr>
+    <tr> <td>Heading accuracy</td>  <td id="mf3_HeadingAcc">---</td> <td>deg</td> </tr>
+    <tr> <td>Pitch accuracy</td>  <td id="mf3_PitchAcc">---</td> <td>deg</td> </tr>
+    <tr> <td>Roll accuracy</td>  <td id="mf3_RollAcc">---</td> <td>deg</td> </tr>
+  </table>
+  
+  <h2>GNSS</h2>
+  <table border=1 class="dataframe, dataframe2">
+    <thead>
+      <tr style="text-align:right;">
+        <th>Measurement</th>
+        <th>Value</th>
+        <th>Units</th>
+      </tr>
+    </thead>
+    <tr> <td>Number of satellites</td>  <td id="mi_GpsNumObs">---</td> <td></td> </tr>
+    <tr> <td>Position mode</td>         <td id="mi_GpsPosMode">---</td> <td></td> </tr>
+    <tr> <td>Velocity mode</td>         <td id="mi_GpsVelMode">---</td> <td></td> </tr>
+    <tr> <td>Attitude mode</td>         <td id="mi_GpsAttMode">---</td> <td></td> </tr>
+    <tr> <td>Number of satellites for position</td>         <td id="mi_NumSatsUsedPos">---</td> <td></td> </tr>
+    <tr> <td>Number of satellites for velocity</td>         <td id="mi_NumSatsUsedVel">---</td> <td></td> </tr>
+    <tr> <td>Number of satellites for attitude</td>         <td id="mi_NumSatsUsedAtt">---</td> <td></td> </tr>
+    
+    <tr> <td>Differential age</td>      <td id="mf2_GpsDiffAge">---</td> <td>s</td> </tr>
+    <tr> <td>Base station ID</td>       <td id="ms_BaseStationId">---</td> <td></td> </tr>
+    <tr> <td>Consecutive rejected GNSS positions</td>       <td id="mi_GpsPosReject">---</td> <td></td> </tr>
+    <tr> <td>Consecutive rejected GNSS velocities</td>       <td id="mi_GpsVelReject">---</td> <td></td> </tr>
+    <tr> <td>Consecutive rejected GNSS attitudes</td>       <td id="mi_GpsAttReject">---</td> <td></td> </tr>
+  </table>
+
+  <h2>Innovations</h2>
+  <table border=1 class="dataframe, dataframe2">
+    <thead>
+      <tr style="text-align:right;">
+        <th>Measurement</th>
+        <th>Value</th>
+        <th>Units</th>
+      </tr>
+    </thead>
+    <tr> <td>Innovation position X</td>   <td id="mf1_InnPosX">---</td> <td></td> </tr>
+    <tr> <td>Innovation position Y</td>   <td id="mf1_InnPosY">---</td> <td></td> </tr>
+    <tr> <td>Innovation position Z</td>   <td id="mf1_InnPosZ">---</td> <td></td> </tr>
+    <tr> <td>Innovation velocity X</td>   <td id="mf1_InnVelX">---</td> <td></td> </tr>
+    <tr> <td>Innovation velocity Y</td>   <td id="mf1_InnVelY">---</td> <td></td> </tr>
+    <tr> <td>Innovation velocity Z</td>   <td id="mf1_InnVelZ">---</td> <td></td> </tr>
+    <tr> <td>Innovation heading</td>      <td id="mf1_InnHeading">---</td> <td></td> </tr>
+    <tr> <td>Innovation pitch</td>        <td id="mf1_InnPitch">---</td> <td></td> </tr>
+    <tr> <td>Innovation no slip</td>      <td id="mf1_InnNoSlipH">---</td> <td></td> </tr>
+    <tr> <td>Innovation heading lock</td> <td id="mf1_InnHeadingH">---</td> <td></td> </tr>
+    <tr> <td>Innovation wheel speed</td>  <td id="mf1_InnWSpeed">---</td> <td></td> </tr>
+    <tr> <td>Innovation zero velocity X</td>   <td id="mf1_ZeroVelX">---</td> <td></td> </tr>
+    <tr> <td>Innovation zero velocity Y</td>   <td id="mf1_ZeroVelY">---</td> <td></td> </tr>
+    <tr> <td>Innovation zero velocity Z</td>   <td id="mf1_ZeroVelZ">---</td> <td></td> </tr>
+
+  </table>
+
+  <h2>IMU</h2>
+    <table border=1 class="dataframe, dataframe2">
+    <thead>
+      <tr style="text-align:right;">
+        <th>Measurement</th><th>Value</th><th>Accuracy</th><th>Units</th>
+      </tr>
+    </thead>
+    <tr> <td>Gyro X Bias</td>  <td id="mf3_WxBias">---</td> <td id="mf3_WxBiasAcc">---</td><td>deg/s</td> </tr>
+    <tr> <td>Gyro Y Bias</td>  <td id="mf3_WyBias">---</td> <td id="mf3_WyBiasAcc">---</td><td>deg/s</td> </tr>
+    <tr> <td>Gyro Z Bias</td>  <td id="mf3_WzBias">---</td> <td id="mf3_WzBiasAcc">---</td><td>deg/s</td> </tr>
+    <tr> <td>Gyro X Scale factor</td>  <td id="mf4_WxSf">---</td> <td id="mf4_WxSfAcc">---</td><td></td> </tr>
+    <tr> <td>Gyro Y Scale factor</td>  <td id="mf4_WySf">---</td> <td id="mf4_WySfAcc">---</td><td></td> </tr>
+    <tr> <td>Gyro Z Scale factor</td>  <td id="mf4_WzSf">---</td> <td id="mf4_WzSfAcc">---</td><td></td> </tr>
+    <tr> <td>Accelerometer X Bias</td>  <td id="mf4_AxBias">---</td> <td id="mf4_AxBiasAcc">---</td><td>m/s&sup2</td> </tr>
+    <tr> <td>Accelerometer Y Bias</td>  <td id="mf4_AyBias">---</td> <td id="mf4_AyBiasAcc">---</td><td>m/s&sup2</td> </tr>
+    <tr> <td>Accelerometer Z Bias</td>  <td id="mf4_AzBias">---</td> <td id="mf4_AzBiasAcc">---</td><td>m/s&sup2</td> </tr>
+  </table>
+
+  <h2>States</h2>
+    <table border=1 class="dataframe, dataframe2">
+    <thead>
+      <tr style="text-align:right;">
+        <th>Measurement</th><th>Value</th><th>Accuracy</th><th>Units</th>
+      </tr>
+    </thead>
+    <tr> <td>IMU to GNSS antenna X</td>  <td id="mf3_GAPx">---</td> <td id="mf3_GAPxAcc">---</td><td>m</td> </tr>
+    <tr> <td>IMU to GNSS antenna Y</td>  <td id="mf3_GAPy">---</td> <td id="mf3_GAPyAcc">---</td><td>m</td> </tr>
+    <tr> <td>IMU to GNSS antenna Z</td>  <td id="mf3_GAPz">---</td> <td id="mf3_GAPzAcc">---</td><td>m</td> </tr>
+    <tr> <td>IMU to GNSS heading</td>    <td id="mf3_AtH">---</td>  <td id="mf3_AtHAcc">---</td><td>deg</td> </tr>
+    <tr> <td>IMU to GNSS pitch</td>      <td id="mf3_AtP">---</td>  <td id="mf3_AtPAcc">---</td><td>deg</td> </tr>
+    <tr> <td>Dual-GNSS baseline</td>     <td id="mf3_BaseLineLength">---</td>  <td id="mf3_BaseLineLengthAcc">---</td><td>m</td> </tr>
+    <tr> <td>Heading misalignment</td>     <td id="mf3_HeadingMisAlign">---</td>  <td id="mf3_HeadingMisAlignAcc">---</td><td>deg</td> </tr>
+  </table>
+
+  <h2>Internal timing</h2>
+    <table border=1 class="dataframe, dataframe2">
+    <thead>
+      <tr style="text-align:right;">
+        <th>Measurement</th><th>Value</th><th>Units</th>
+      </tr>
+    </thead>
+    <tr> <td>Time Mismatch</td>  <td id="mi_TimeMismatch">---</td> <td>ms</td> </tr>
+    <tr> <td>Imu time difference</td>  <td id="mi_ImuTimeDiff">---</td> <td>ms</td> </tr>
+    <tr> <td>Imu time margin</td>  <td id="mi_ImuTimeMargin">---</td> <td>ms</td> </tr>
+    <tr> <td>Imu loop time</td>  <td id="mi_ImuLoopTime">---</td> <td>ms</td> </tr>
+    <tr> <td>Output loop time</td>  <td id="mi_OpLoopTime">---</td> <td>ms</td> </tr>
+    <tr> <td>BNS lag</td>  <td id="mi_BnsLag">---</td> <td>ms</td> </tr>
+  </table>
+
+
+  <h2>System</h2>
+    <table border=1 class="dataframe, dataframe2">
+    <thead>
+      <tr style="text-align:right;">
+        <th>Measurement</th><th>Value</th><th>Units</th>
+      </tr>
+    </thead>
+    <tr> <td>Serial number</td>     <td id="mi_SerialNumber">---</td> <td></td> </tr>
+    <tr> <td>Dev Id</td>            <td id="ms_DevId">---</td>        <td></td> </tr>
+    <tr> <td>Disk space</td>        <td id="mi_DiskSpace">---</td>   <td></td> </tr>
+    <tr> <td>File size</td>         <td id="mi_FileSize">---</td>    <td></td> </tr>
+    <tr> <td>Up time</td>           <td id="mi_UpTime">---</td>    <td>s</td> </tr>    
+    <tr> <td>OS Version 1</td>      <td id="mi_OsVersion1">---</td>    <td></td> </tr>
+    <tr> <td>OS Version 2</td>      <td id="mi_OsVersion2">---</td>    <td></td> </tr>
+    <tr> <td>OS Version 3</td>      <td id="mi_OsVersion3">---</td>    <td></td> </tr>
+    <tr> <td>IMU Type</td>          <td id="ms_ImuType">---</td>    <td></td> </tr>
+    <tr> <td>GPS primary type</td>  <td id="ms_GpsPrimary">---</td>    <td></td> </tr>
+    <tr> <td>GPS secondary type</td><td id="ms_GpsSecondary">---</td>    <td></td> </tr>
+    <tr> <td>Interconnection PCB type</td><td id="ms_InterPcbType">---</td>    <td></td> </tr>
+    <tr> <td>Front PCB type</td>    <td id="ms_FrontPcbType">---</td>    <td></td> </tr>
+    <tr> <td>Interconnection PCB DevId</td><td id="ms_InterSwId">---</td>    <td></td> </tr>
+  </table>
+
+
+  <h2>Decoders</h2>
+    <table border=1 class="dataframe, dataframe2">
+    <thead>
+      <tr style="text-align:right;">
+        <th>Measurement</th><th>Value</th><th>Units</th>
+      </tr>
+    </thead>
+    <tr> <td>Command chars</td>                 <td id="mi_CmdChars">---</td> <td></td> </tr>
+    <tr> <td>Command packets</td>               <td id="mi_CmdPkts">---</td> <td></td> </tr>
+    <tr> <td>Command chars skipped</td>         <td id="mi_CmdCharsSkipped">---</td> <td></td> </tr>
+    <tr> <td>Command errors</td>                <td id="mi_CmdErrors">---</td> <td></td> </tr>
+    <tr> <td>GNSS primary chars</td>            <td id="mi_GpsPrimaryChars">---</td> <td></td> </tr>
+    <tr> <td>GNSS primary packets</td>          <td id="mi_GpsPrimaryPkts">---</td> <td></td> </tr>
+    <tr> <td>GNSS primary chars skipped</td>    <td id="mi_GpsPrimaryCharsSkipped">---</td> <td></td> </tr>
+    <tr> <td>GNSS primary packets too old</td>  <td id="mi_GpsPrimaryOldPkts">---</td> <td></td> </tr>
+  </table>
+
+
+
+  <script language="javascript" type="text/javascript">
+    function init()
+    {
+      disconnected = true
+      doConnect();
+    }
+
+    timer = setInterval(function() { 
+        if(disconnected == true) {
+          doConnect();
+        }
+      }, 5000)
+
+    function doConnect()
+    {
+      websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/status.json");
+      websocket.onopen = function(evt) { onOpen(evt) };
+      websocket.onclose = function(evt) { onClose(evt) };
+      websocket.onmessage = function(evt) { onMessage(evt) };
+      websocket.onerror = function(evt) { onError(evt) };
+    }
+
+    function onOpen(evt)
+    {
+      disconnected = false;
+    }
+
+    function onClose(evt)
+    {
+      disconnected = true;
+    }
+
+    function onMessage(evt)
+    {
+      let status = JSON.parse(evt.data);
+      
+      // Employ a cheat to make it easier to update the document
+      // All <td> elements with an id starting with "m_"
+      // are assumed to be measurements in status
+      // This for-loop updates them
+      for (el of document.getElementsByTagName("td") )
+      {
+        if (/^m[is]_/.test(el.id))
+          updateId(status,el.id);
+        else if (/^mf[0-9]_/.test(el.id))
+        {
+          let precision = parseInt(el.id[2]);
+          updateIdF(status,el.id, precision);
+        }
+      }
+    }
+    
+    function updateId(status,id)
+    {
+      s = status[id.substring(3)];
+      if (s != undefined)
+        document.getElementById(id).innerHTML = s;
+    }
+    
+    function updateIdF(status,id,precision)
+    {
+      s = status[id.substring(4)];
+      if (s != undefined)
+        document.getElementById(id).innerHTML = s.toFixed(precision);      
+    }
+
+    function onError(evt)
+    {
+      websocket.close();
+      disconnected = true;
+    }
+
+    function doit_onkeypress(event)
+    {
+      if (event.keyCode == 13 || event.which == 13)
+      {
+        websocket.send(document.getElementById("send_text").value);
+      }
+    }
+
+    window.addEventListener("load", init, false);
+
+  </script>
+</body>
+</html>

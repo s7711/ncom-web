@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>OxTS XY Position</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="favicon.png">
+    <script type="text/javascript" src="loader.js"></script>
+    
+  </head>
+  <body>
+    <div id="chart_div" style="width: 900px; height: 500px;"></div>
+    <table border=1 class="dataframe, dataframe2">
+      <thead>
+        <tr> <th>Measurement</th>  <th>Value</th> <th>Units</th> </tr>
+      </thead>
+      <tr> <td>GpsTime</td>         <td id="GpsTime">---</td> <td></td> </tr>
+      <tr> <td>Latitude</td>        <td id="Lat">---</td> <td>deg</td> </tr>
+      <tr> <td>Longitude</td>       <td id="Lon">---</td> <td>deg</td> </tr>
+      <tr> <td>Altitude</td>        <td id="Alt">---</td> <td>m</td> </tr>
+      <tr> <td>Velocity North</td>  <td id="Vn">---</td> <td>m/s</td> </tr>
+      <tr> <td>Velocity East</td>   <td id="Ve">---</td> <td>m/s</td> </tr>
+      <tr> <td>Velocity Down</td>   <td id="Vd">---</td> <td>m/s</td> </tr>
+      <tr> <td>Heading</td>         <td id="Heading">---</td> <td>deg</td> </tr>
+      <tr> <td>Pitch</td>           <td id="Pitch">---</td> <td>deg</td> </tr>
+      <tr> <td>Roll</td>            <td id="Roll">---</td> <td>deg</td> </tr>
+    </table>
+
+
+    <script language="javascript" type="text/javascript">
+      function init()
+      {
+        disconnected = true
+        doConnect();
+        
+        xy = new google.visualization.DataTable();
+        xy.addColumn('number','X');
+        xy.addColumn('number','Y');
+        next_xy = 0;
+        base = {};
+        
+        chart = new google.visualization.ScatterChart(document.getElementById('chart_div'));
+        options = {
+          title: 'XY Position (m)',
+          legend: 'none'
+        };
+      }
+
+      timer = setInterval(function() { 
+          if(disconnected == true) {
+            doConnect();
+          }
+        }, 5000)
+
+      function doConnect()
+      {
+        websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/nav.json");
+        websocket.onopen = function(evt) { onOpen(evt) };
+        websocket.onclose = function(evt) { onClose(evt) };
+        websocket.onmessage = function(evt) { onMessage(evt) };
+        websocket.onerror = function(evt) { onError(evt) };
+      }
+
+      function onOpen(evt)
+      {
+        disconnected = false;
+      }
+
+      function onClose(evt)
+      {
+        disconnected = true;
+      }
+
+      function onMessage(evt)
+      {
+        let nav = JSON.parse(evt.data);
+        document.getElementById("GpsTime").innerHTML = nav.GpsTime;
+        document.getElementById("Lat").innerHTML = (nav.Lat*57.295779513).toFixed(8);
+        document.getElementById("Lon").innerHTML = (nav.Lon*57.295779513).toFixed(8);
+        document.getElementById("Alt").innerHTML = nav.Alt.toFixed(3);
+        document.getElementById("Vn").innerHTML = nav.Vn.toFixed(2);
+        document.getElementById("Ve").innerHTML = nav.Ve.toFixed(2);
+        document.getElementById("Vd").innerHTML = nav.Vd.toFixed(2);
+        document.getElementById("Heading").innerHTML = nav.Heading.toFixed(2);
+        document.getElementById("Pitch").innerHTML = nav.Pitch.toFixed(2);
+        document.getElementById("Roll").innerHTML = nav.Roll.toFixed(2);
+
+        try
+        {
+            if (Object.keys(base).length == 0)
+              base = {Lat:nav.Lat, Lon:nav.Lon};
+            XY = [(nav.Lat-base.Lat)*6370000, (nav.Lon-base.Lon)*6370000*Math.sin(base.Lat)]
+            if (xy.Wf.length < 200)
+              xy.addRows([[XY[0],XY[1]]]);
+            else
+            {
+              xy.setCell(next_xy,0,XY[0]);
+              xy.setCell(next_xy,1,XY[1]);
+              next_xy = (next_xy+1) % 200
+            }
+            chart.draw(xy,options);
+        }
+        catch(e)
+        {
+            console.log(e);
+        }
+        
+      }
+      
+      function updateId(status,id)
+      {
+        s = status[id.substring(3)];
+        if (s != undefined)
+          document.getElementById(id).innerHTML = s;
+      }
+      
+      function updateIdF(status,id,precision)
+      {
+        s = status[id.substring(4)];
+        if (s != undefined)
+          document.getElementById(id).innerHTML = s.toFixed(precision);      
+      }
+
+      function onError(evt)
+      {
+        websocket.close();
+        disconnected = true;
+      }
+
+      function doit_onkeypress(event)
+      {
+        if (event.keyCode == 13 || event.which == 13)
+        {
+          websocket.send(document.getElementById("send_text").value);
+        }
+      }
+
+      window.addEventListener("load", init, false);
+
+      google.charts.load('current', {'packages':['corechart']});
+      google.charts.setOnLoadCallback(drawChart);
+
+      function drawChart() {
+        chart.draw(xy, options);
+      }
+
+    </script>
+  </body>
+</html>
