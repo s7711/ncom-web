@@ -73,6 +73,8 @@ import time
 import json
 import threading
 import socket
+import sys
+import os
 
 # Local modules
 import ncomrx_thread
@@ -95,16 +97,26 @@ def serve_json():
 		time.sleep(0.5)
 		nav_json = json.dumps(nrx.nav, default=str)
 		status_json = json.dumps(nrx.status, default=str)
+		connection_json = json.dumps(nrx.connection, default=str)
 		ws.send_message_all(nav_json, path="/nav.json")
 		ws.send_message_all(status_json, path="/status.json")
-
+		ws.send_message_all(connection_json, path="/connection.json")
 
 # Start the program
-print("Use Ctrl-C (Ctrl-Break) twice to quit")
+print("Use Ctrl-C to quit")
 threading.Thread(target=serve_json).start()
 
-# receive messages from web sockets
-while(1):
-	message = ws.next_message()
-	print(message)
-	sock.sendto(bytes(message+"\n", "utf-8"), ("192.168.2.62",3001))
+
+try:
+	# receive messages from web sockets
+	while(1):
+		message = ws.next_message()
+		print(message)
+		sock.sendto(bytes(message+"\n", "utf-8"), ("192.168.2.62",3001))
+except KeyboardInterrupt as e:
+	print('Stopping')
+	# Needs extra help to stop threads, which may be blocked on sockets
+	try:
+		sys.exit(0)
+	except SystemExit:
+		os._exit(1)

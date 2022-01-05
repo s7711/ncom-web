@@ -130,11 +130,13 @@ class NcomRx(object):
         # todo: protect nav, status with a lock when multi-threaded
         self.nav = {}  # Dictionary for navigation measurements
         self.status = {} # Dictionary for status/configuration
+        self.connection = {} # Dictionary for decoding status variables
+        self.ncomBytes = b'' # Holds bytes waiting to be decoded
         
         # Find all 'decodeStatus' functions and create dictionary
         decodeList = [ (int(decoder[12:]),getattr(self,decoder)) for decoder in dir(self) if decoder[0:12] == 'decodeStatus']
         self.decodeStatus = dict(decodeList)
-        self.decodeStatusErrors = {} # Useful for debugging or identifying new status channels
+        self.connection['decodeStatusErrors'] = {} # Useful for debugging or identifying new status channels
         
         # A race-condition exists with time, where minutes are in
         # a status message and seconds are in Batch A
@@ -142,77 +144,83 @@ class NcomRx(object):
         self.previousSeconds = 0
         
         # Information about decoding the stream
-        self.numChars = 0
-        self.skippedChars = 0
-        self.numPackets = 0        
+        self.connection['numChars'] = 0
+        self.connection['skippedChars'] = 0
+        self.connection['numPackets'] = 0        
         
         # Filter for converting machineTime to GpsTime
-        self.timeOffset = None   # GpsTime = machineTime + timeOffset
+        self.connection['timeOffset'] = None   # GpsTime = machineTime + timeOffset
         self.f1 = 0.1            # Factor to decrease timeOffset
         self.f2 = 0.001          # Factor to increase timeOffset
 
     ####################################################################
     # decode() is the normal function to call when new data is available
-    # It will update the 'nav' and 'status' member variables with
-    # new measurements
-    def decode(self,ncomBytes, machineTime=None):
+    # It will update the 'nav' and 'status' dictionaries with
+    #  new measurements; the 'connection' dictionary holds decode info
+    # Only one packet will be decoded so either ensure that
+    #  rxBytes <= NOUTPUT_PACKET_LENGTH or call multiple times until
+    #  return value is 0
+    def decode(self,rxBytes, machineTime=None):
         # ncomBytes should be a bytes object
-        # Returns int > 0 if packet is decoded
-        # Returns int <= 0 if packet cannot be decoded
-        # abs(value) is the number of bytes to skip before next call
+        # Returns 1 if packet is decoded
+        # Returns 0 if packet cannot be decoded
+        # machineTime can be used to work out the offset between the
+        #   local clock and GpsTime
+        
+        self.ncomBytes += rxBytes # Add received bytes to ncomBytes
         
         # Find the first valid packet
         skipped = 0
         while(1):
             # Find the NCOM_SYNC
-            syncOffset = ncomBytes.find(NCOM_SYNC)
+            syncOffset = self.ncomBytes.find(NCOM_SYNC)
             
             # -1 means there is no sync or valid packet in ncomBytes
             if syncOffset < 0:
                 skipped += len(ncomBytes)
-                self.numChars += skipped
-                self.skippedChars += skipped
-                return -skipped
+                self.connection['numChars'] += skipped
+                self.connection['skippedChars'] += skipped
+                self.ncomBytes = b''
+                return 0
             
             # Realign to sync byte
-            ncomBytes = ncomBytes[syncOffset:]
+            self.ncomBytes = self.ncomBytes[syncOffset:]
             skipped += syncOffset
             
             # Is there enough data for a full packet?
-            if len(ncomBytes) < NOUTPUT_PACKET_LENGTH:
-                self.numChars += skipped
-                self.skippedChars += skipped
-                return -skipped
+            if len(self.ncomBytes) < NOUTPUT_PACKET_LENGTH:
+                return 0
                         
             # Test the packet integrity
-            if ncomBytes[22] == sum(ncomBytes[1:22]) % 256 \
-            or ncomBytes[61] == sum(ncomBytes[1:61]) % 256 \
-            or ncomBytes[71] == sum(ncomBytes[1:71]) % 256:
-                self.numChars += NOUTPUT_PACKET_LENGTH
-                self.skippedChars += skipped
-                self.numPackets += 1
+            if self.ncomBytes[22] == sum(self.ncomBytes[1:22]) % 256 \
+            or self.ncomBytes[61] == sum(self.ncomBytes[1:61]) % 256 \
+            or self.ncomBytes[71] == sum(self.ncomBytes[1:71]) % 256:
+                self.connection['numChars'] += NOUTPUT_PACKET_LENGTH
+                self.connection['skippedChars'] += skipped
+                self.connection['numPackets'] += 1
                 break # Valid packet
             
             # This sync is not a valid packet so skip over
-            ncomBytes = ncomBytes[1:]
+            self.ncomBytes = self.ncomBytes[1:]
             skipped += 1
         
+        # ... Must have a valid packet or we would have returned
         # Decode NavStatus to find what other fields are valid
-        self.nav['NavStatus'] = int(ncomBytes[21])
+        self.nav['NavStatus'] = int(self.ncomBytes[21])
         
         if self.nav['NavStatus'] in [0,5,6,7]:
             self.status = {}
-            return NOUTPUT_PACKET_LENGTH + skipped # All quantities are invalid
+            return 1 # All quantities are invalid
         
         if self.nav['NavStatus'] in [1,2,3,4,20,21,22]:        
             # Decode Batch A
-            self.nav['GpsSeconds'] = int.from_bytes(ncomBytes[1:3], byteorder = 'little', signed=False) * TIME2SEC
-            self.nav['Ax'] = int.from_bytes(ncomBytes[3:6],   byteorder = 'little', signed=True) * ACC2MPS2
-            self.nav['Ay'] = int.from_bytes(ncomBytes[6:9],   byteorder = 'little', signed=True) * ACC2MPS2
-            self.nav['Az'] = int.from_bytes(ncomBytes[9:12],  byteorder = 'little', signed=True) * ACC2MPS2
-            self.nav['Wx'] = int.from_bytes(ncomBytes[12:15], byteorder = 'little', signed=True) * RATE2RPS
-            self.nav['Wy'] = int.from_bytes(ncomBytes[15:18], byteorder = 'little', signed=True) * RATE2RPS
-            self.nav['Wz'] = int.from_bytes(ncomBytes[18:21], byteorder = 'little', signed=True) * RATE2RPS
+            self.nav['GpsSeconds'] = int.from_bytes(self.ncomBytes[1:3], byteorder = 'little', signed=False) * TIME2SEC
+            self.nav['Ax'] = int.from_bytes(self.ncomBytes[3:6],   byteorder = 'little', signed=True) * ACC2MPS2
+            self.nav['Ay'] = int.from_bytes(self.ncomBytes[6:9],   byteorder = 'little', signed=True) * ACC2MPS2
+            self.nav['Az'] = int.from_bytes(self.ncomBytes[9:12],  byteorder = 'little', signed=True) * ACC2MPS2
+            self.nav['Wx'] = int.from_bytes(self.ncomBytes[12:15], byteorder = 'little', signed=True) * RATE2RPS
+            self.nav['Wy'] = int.from_bytes(self.ncomBytes[15:18], byteorder = 'little', signed=True) * RATE2RPS
+            self.nav['Wz'] = int.from_bytes(self.ncomBytes[18:21], byteorder = 'little', signed=True) * RATE2RPS
 
             # Create sensible time format
             # See if seconds have wrapped
@@ -239,51 +247,54 @@ class NcomRx(object):
             # so that different estimators can be tried
             try:
                 if machineTime == None:
-                    self.timeOffset = None
-                elif self.timeOffset == None:
-                    self.timeOffset = self.nav['GpsSeconds'] + self.status['GpsMinutes'] * 60.0 - machineTime
+                    self.connection['timeOffset'] = None
+                elif self.connection['timeOffset'] == None:
+                    self.connection['timeOffset'] = self.nav['GpsSeconds'] + self.status['GpsMinutes'] * 60.0 - machineTime
                 else:
                     to = self.nav['GpsSeconds'] + self.status['GpsMinutes'] * 60.0 - machineTime
-                    dto = to - self.timeOffset # This is the unfiltered adjustment for this epoch
-                    self.timeOffset += dto*self.f2 if dto < 0.0 else dto*self.f1
+                    dto = to - self.connection['timeOffset'] # This is the unfiltered adjustment for this epoch
+                    self.connection['timeOffset'] += dto*self.f2 if dto < 0.0 else dto*self.f1
             except:
-                self.timeOffset = None
+                self.connection['timeOffset'] = None
             
         if self.nav['NavStatus'] in [3,4,20,21,22]:
             # Decode Batch B
-            self.nav['Lat'] = struct.unpack("<d",ncomBytes[23:31])[0]
-            self.nav['Lon'] = struct.unpack("<d",ncomBytes[31:39])[0]
-            self.nav['Alt'] = struct.unpack("<f",ncomBytes[39:43])[0]
-            self.nav['Vn'] = int.from_bytes(ncomBytes[43:46], byteorder = 'little', signed=True) * VEL2MPS
-            self.nav['Ve'] = int.from_bytes(ncomBytes[46:49], byteorder = 'little', signed=True) * VEL2MPS
-            self.nav['Vd'] = int.from_bytes(ncomBytes[49:52], byteorder = 'little', signed=True) * VEL2MPS
-            h = int.from_bytes(ncomBytes[52:55], byteorder = 'little', signed=True) * ANG2RAD * RAD2DEG
+            self.nav['Lat'] = struct.unpack("<d",self.ncomBytes[23:31])[0]
+            self.nav['Lon'] = struct.unpack("<d",self.ncomBytes[31:39])[0]
+            self.nav['Alt'] = struct.unpack("<f",self.ncomBytes[39:43])[0]
+            self.nav['Vn'] = int.from_bytes(self.ncomBytes[43:46], byteorder = 'little', signed=True) * VEL2MPS
+            self.nav['Ve'] = int.from_bytes(self.ncomBytes[46:49], byteorder = 'little', signed=True) * VEL2MPS
+            self.nav['Vd'] = int.from_bytes(self.ncomBytes[49:52], byteorder = 'little', signed=True) * VEL2MPS
+            h = int.from_bytes(self.ncomBytes[52:55], byteorder = 'little', signed=True) * ANG2RAD * RAD2DEG
             self.nav['Heading'] = h if h >= 0.0 else h + 360.0
-            self.nav['Pitch']   = int.from_bytes(ncomBytes[55:58], byteorder = 'little', signed=True) * ANG2RAD * RAD2DEG
-            self.nav['Roll']    = int.from_bytes(ncomBytes[58:61], byteorder = 'little', signed=True) * ANG2RAD * RAD2DEG
+            self.nav['Pitch']   = int.from_bytes(self.ncomBytes[55:58], byteorder = 'little', signed=True) * ANG2RAD * RAD2DEG
+            self.nav['Roll']    = int.from_bytes(self.ncomBytes[58:61], byteorder = 'little', signed=True) * ANG2RAD * RAD2DEG
 
         if self.nav['NavStatus'] in [1,2,3,4,10,20,21,22]:
             # Decode Batch S
-            statusChannel = int(ncomBytes[62])
+            statusChannel = int(self.ncomBytes[62])
             try:
-                self.decodeStatus[statusChannel](ncomBytes[63:71])
+                self.decodeStatus[statusChannel](self.ncomBytes[63:71])
             except:
                 # Catch missing or erroneous decodeStatus functions
                 try:
                     # Increment the errors for this channel
-                    self.decodeStatusErrors[statusChannel] += 1
+                    self.connection['decodeStatusErrors'][statusChannel] += 1
                 except:
-                    self.decodeStatusErrors[statusChannel] = 1 # Start new key
+                    self.connection['decodeStatusErrors'][statusChannel] = 1 # Start new key
 
-        return NOUTPUT_PACKET_LENGTH + skipped
+        # Remove this packet
+        self.ncomBytes = self.ncomBytes[NOUTPUT_PACKET_LENGTH:]
+
+        return 1
 
 
     def mt2Gps(self, machineTime):
         # Converts machineTime to GpsTime
         # todo: return the stdev estimate as well as the converted time
-        if self.timeOffset != None:
-            gt = machineTime + self.timeOffset
-            return GPS_STARTTIME + datetime.timedelta( seconds=machineTime+self.timeOffset )
+        if self.connection['timeOffset'] != None:
+            gt = machineTime + self.connection['timeOffset']
+            return GPS_STARTTIME + datetime.timedelta( seconds=machineTime+self.connection['timeOffset'] )
         else:
             return None
 

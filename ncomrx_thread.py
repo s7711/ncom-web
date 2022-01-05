@@ -61,6 +61,7 @@ class NcomRxThread(threading.Thread, ncomrx.NcomRx):
         ncomrx.NcomRx.__init__(self)
         self.keepGoing = True
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.settimeout(0.5)
         self.sock.bind(('', 3000))
         self.crcList = collections.deque(maxlen=200)
         #self.pin = gpiozero.LED(24) # Debugging
@@ -78,36 +79,21 @@ class NcomRxThread(threading.Thread, ncomrx.NcomRx):
             crc = binascii.crc32(nb)
             if crc not in self.crcList:                
                 self.crcList.append(crc)
-                nb = rb + nb             # Add any remaining bytes from previous packet
-                while(len(nb) >= ncomrx.NOUTPUT_PACKET_LENGTH ):
-                    # Decode the remaining bytes + ncom bytes
-                    usedBytes = self.decode(nb, machineTime=myTime)
-                                                            
-                    # Negative usedBytes indicates that a packet cannot be decoded
-                    if usedBytes <= 0:
-                        nb = nb[-usedBytes:] # Remaining bytes to be added next time
-                    
-                    # Else there is a valid packet
+                self.decode(nb, machineTime=myTime)
+                                                                                
+                """
+                # This code is used to test the timing by setting
+                # the pin (on the raspberry pi) high when the NCOM
+                # message at the start of the second is received
+                try:
+                    t = ((self.nav['GpsSeconds'] % 1.0) * 1000.0)
+                    if t >= 0.0 and t < 9.0:
+                        self.pin.on()
                     else:
-                        # Remove this packet and keep any remaining bytes
-                        nb = nb[usedBytes:]
-                    
-                    """
-                    # This code is used to test the timing by setting
-                    # the pin (on the raspberry pi) high when the NCOM
-                    # message at the start of the second is received
-                    try:
-                        t = ((self.nav['GpsSeconds'] % 1.0) * 1000.0)
-                        if t >= 0.0 and t < 9.0:
-                            self.pin.on()
-                        else:
-                            self.pin.off()
-                    except:
-                        self.exceptions += 1
-                    """
-                
-                # remaining bytes need decoding when more data comes
-                rb = nb
-        
+                        self.pin.off()
+                except:
+                    self.exceptions += 1
+                """
+                        
     def stop(self):
         self.keepGoing = False
