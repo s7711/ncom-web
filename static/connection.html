@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>OxTS Connection</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="favicon.png">
+</head>
+<body>
+  <h1><a href="index.html" style=text-decoration:none>Connection</a></h1>
+  <p>
+    Send: <input type="text" id="send_text" onkeypress="javascript:doit_onkeypress(event);" />
+  </p>
+  <h2>Accuracy</h2>
+  <table border=1 class="dataframe, dataframe2">
+    <thead>
+      <tr style="text-align:right;">
+        <th>Measurement</th>
+        <th>Value</th>
+        <th>Units</th>
+      </tr>
+    </thead>
+    <!-- Note: the id of the <td> cell used to match the key -->
+    <!-- See onMessage() for format -->
+      <tr> <td>Chars received</td>     <td id="mi_numChars">---</td>     <td></td> </tr>
+      <tr> <td>Chars skipped</td>      <td id="mi_skippedChars">---</td> <td></td> </tr>
+      <tr> <td>Packets received</td>   <td id="mi_numPackets">---</td>   <td></td> </tr>
+      <tr> <td>Time offset</td>        <td id="mf4_timeOffset">---</td>   <td>s</td> </tr>
+  </table>
+
+
+  <script language="javascript" type="text/javascript">
+    function init()
+    {
+      disconnected = true
+      doConnect();
+    }
+
+    timer = setInterval(function() { 
+        if(disconnected == true) {
+          doConnect();
+        }
+      }, 5000)
+
+    function doConnect()
+    {
+      websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/connection.json");
+      websocket.onopen = function(evt) { onOpen(evt) };
+      websocket.onclose = function(evt) { onClose(evt) };
+      websocket.onmessage = function(evt) { onMessage(evt) };
+      websocket.onerror = function(evt) { onError(evt) };
+    }
+
+    function onOpen(evt)
+    {
+      disconnected = false;
+    }
+
+    function onClose(evt)
+    {
+      disconnected = true;
+    }
+
+    function onMessage(evt)
+    {
+      let data = JSON.parse(evt.data);
+            
+      // Employ a cheat to make it easier to update the document
+      // All <td> elements with an id starting with "m_"
+      // are assumed to be measurements in data
+      // This for-loop updates them
+      for (el of document.getElementsByTagName("td") )
+      {
+        if (/^m[is]_/.test(el.id))
+          updateId(data,el.id);
+        else if (/^mf[0-9]_/.test(el.id))
+        {
+          let precision = parseInt(el.id[2]);
+          updateIdF(data,el.id, precision);
+        }
+      }
+    }
+    
+    function updateId(data,id)
+    {
+      s = data[id.substring(3)];
+      if (s != undefined)
+        document.getElementById(id).innerHTML = s;
+    }
+    
+    function updateIdF(data,id,precision)
+    {
+      s = data[id.substring(4)];
+      if (s != undefined)
+        document.getElementById(id).innerHTML = s.toFixed(precision);      
+    }
+
+    function onError(evt)
+    {
+      websocket.close();
+      disconnected = true;
+    }
+
+    function doit_onkeypress(event)
+    {
+      if (event.keyCode == 13 || event.which == 13)
+      {
+        websocket.send(document.getElementById("send_text").value);
+      }
+    }
+
+    window.addEventListener("load", init, false);
+
+  </script>
+</body>
+</html>

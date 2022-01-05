@@ -22,10 +22,10 @@ The software includes:
 * Python NCOM decoder (not fully tested)
 * Basic web server
 * Translation of NCOM navigation and NCOM status measurements to JSON
+* Communication information as JSON
 * Web sockets to send navigation and status measurements to the web page
 
 There are many improvements that need to be made:
-* Communication information (packets received, errors, etc.) are not transmitted
 * You cannot use the program on a network with more than one OxTS INS, it will mix up all the measurements
 * The update rate is hard coded at 2Hz, which is fine for text but a higher rate may be necessary if graphs are added
 * The IP address for the send box is hard coded and should auto-configure itself
