@@ -13,6 +13,10 @@ This version supports multiple INSs, so can work in an RT-Range application (tho
 * Connection - shows information about the NCOM decoder (useful for debugging)
 * XY - shows a basic XY plot of position
 
+Here is an example page:
+
+![Example html template showing xNAV550 data](https://github.com/s7711/ncom-web/blob/main/image/speed-template-example.png)
+
 Some of the pages can send commands to the INS, which is useful when initialising the INS on the bench (using !set init hea 0).
 
 In my setup I had a Raspberry Pi with:
