@@ -81,7 +81,8 @@ class BgWebHandler(HTTPWebSocketsHandler):
         # Overrides HTTPWebSocketsHandler
         if message != None:
             try:
-                self.server.websocketmessages.put(message,block=False)
+                # Put both the message and the path so we know where it came from
+                self.server.websocketmessages.put((message, self.path),block=False)
             except Exception as e:
                 pass # queue full then throw it away
 
@@ -140,6 +141,13 @@ class BgWebServer():
         is done so all messages arrive in the same queue for all web
         sockets.
         TODO: have different queues for each web socket address
+        """
+        return self.server.websocketmessages.get()[0] # blocks if empty
+    
+    def recvpath(self):
+        """
+        Returns the next message in the queue and the path of the socket
+        that sent the message. Returns (message, path) as a tuple.
         """
         return self.server.websocketmessages.get() # blocks if empty
     

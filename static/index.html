@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>OxTS Devices</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="favicon.png">
+</head>
+<body>
+  <h1><a href="index.html" style=text-decoration:none>Devices</a></h1>
+  <div id="devices"></div>
+
+
+  <script language="javascript" type="text/javascript">
+    function init()
+    {
+      disconnected = true
+      doConnect();
+    }
+
+    timer = setInterval(function() { 
+        if(disconnected == true) {
+          doConnect();
+        }
+      }, 5000)
+
+    function doConnect()
+    {
+      websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/devices.json");
+      websocket.onopen = function(evt) { onOpen(evt) };
+      websocket.onclose = function(evt) { onClose(evt) };
+      websocket.onmessage = function(evt) { onMessage(evt) };
+      websocket.onerror = function(evt) { onError(evt) };
+    }
+
+    function onOpen(evt)
+    {
+      disconnected = false;
+    }
+
+    function onClose(evt)
+    {
+      disconnected = true;
+    }
+
+    function onMessage(evt)
+    {
+      let data = JSON.parse(evt.data);
+      s = "";
+      for(ip of data)
+      {
+        s += "<p>";
+        s += ip + ": ";
+        s += "<a href='speed.html?ip="+ip+"'>Speed</a> ";
+        s += "<a href='nav.html?ip="+ip+"'>Nav</a> ";
+        s += "<a href='status.html?ip="+ip+"'>Status</a> ";
+        s += "<a href='connection.html?ip="+ip+"'>Connection</a> ";
+        s += "<a href='xy.html?ip="+ip+"'>XY</a> ";
+        s += "</p>";
+      }
+      document.getElementById('devices').innerHTML = s;
+    }
+    
+    function onError(evt)
+    {
+      websocket.close();
+      disconnected = true;
+    }
+
+    window.addEventListener("load", init, false);
+
+  </script>
+</body>
+</html>

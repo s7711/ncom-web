@@ -26,24 +26,37 @@
 ncom-web main entry point
 
 The ncom-web application:
-* decodes NCOM ethernet data from an OxTS inertial navigation system
+* decodes NCOM ethernet data from OxTS inertial navigation systems
 * serves static web pages
-* serves two web sockets (nav.json, status.json) so NCOM data can be
-    displayed in web pages
+* serves four web sockets so NCOM data can be displayed in web pages
+  - nav.json contains the navigation information from NCOM
+  - status.json contains the status information from NCOM
+  - connection.json contains information about the decoding
+  - devices.json lists the IP address of all the devices
 
-The basic setup that I created it for is:
+Note that this version is IP address specific and can be used with
+multiple INSs on the same network. To select which INS you want the
+data from you need to specify a query in the web socket address.
+For example:
 
-"OxTS - Raspberry Pi" connected by ethernet
-"Raspberry Pi - network" connected by wlan
+  ws://192.168.2.123:8000/nav.json?ip=192.168.2.62
+
+will connect to 192.168.2.123 and open the web socket that serves
+navigation data from INS on IP address 192.168.2.62
+
+The devices.json web socket doesn't need an IP address because it lists
+all of the devices/IP addresses that have been received
+
+The basic hardware setup that I used is:
+
+"OxTS <--> Raspberry Pi" connected by ethernet using static IP in range 192.168.2.xxx
+"Raspberry Pi <--> network" connected by wlan using DHCP (192.168.1.xxx)
 
 This separates the OxTS navigation system from the main network.
 
 Probably there should be some command line options, but I have not
 implemented these. The port address for the web server is hard coded.
-The NCOM decoder will receive from any OxTS on the network, so you
-cannot have two at the same time. The IP address of my OxTS was
-192.168.2.62 and this needs to be updated in the code if you want
-to send messages to the OxTS. See below.
+The NCOM decoder will receive from all OxTS INSs on the network.
 
 Usage:
 
@@ -51,13 +64,10 @@ python3 main.py
 
 Then, from a web browser:
 
-http://<ip>:8000/nav.html
-http://<ip>:8000/status.html
+http://<ip of python PC>:8000/nav.html?ip=<ip of INS>
+http://<ip of python PC>:8000/status.html?ip=<ip of INS>
 
-For example: http://192.168.1.10:8000/nav.html
-
-You will have to press Ctrl-C twice (or Ctrl-Break for Windows) because
-the threads are blocked on sockets and won't quit. Another thing to fix.
+For example: http://192.168.1.10:8000/nav.html?ip=195.0.0.20
 
 You can add html pages to directory "static" to create your own
 templates. My HTML is functional but it needs someone with more
@@ -75,32 +85,48 @@ import threading
 import socket
 import sys
 import os
+import re
 
 # Local modules
 import ncomrx_thread
 import bgWebServer
 
-
 # Start the background web server
 ws = bgWebServer.BgWebServer()
 
 # Start background ncom receiver and decoder
-nrx = ncomrx_thread.NcomRxThread()
+nrxs = ncomrx_thread.NcomRxThread()
 
 # Socket for sending UDP
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 def serve_json():
-	""" serve_json() loops forever serving ncom to the web sockets """
+	"""
+	serve_json() loops forever serving ncom to the web sockets.
+	Run in a new thread
+	"""
 	global nrx, ws
 	while(1):
-		time.sleep(0.5)
-		nav_json = json.dumps(nrx.nav, default=str)
-		status_json = json.dumps(nrx.status, default=str)
-		connection_json = json.dumps(nrx.connection, default=str)
-		ws.send_message_all(nav_json, path="/nav.json")
-		ws.send_message_all(status_json, path="/status.json")
-		ws.send_message_all(connection_json, path="/connection.json")
+		time.sleep(0.5) # Sets the update rate for the sockets
+		
+		# nrxs.nrx is a dictionary of all the INSs found on the network
+		# ... and the keys are the IP addresses
+		# Form a list of the IP addresses
+		devices = [ nrx for nrx in nrxs.nrx ] # list of keys/ip addresses
+		devices_json = json.dumps(devices)
+		ws.send_message_all(devices_json, path="/devices.json")
+		
+		# For each INS extract the information from the decoder (NcomRx type)
+		# Note that this implementation encodes everything in JSON, even if
+		# it ends up that no websocket wants the data
+		for addr, nrx in nrxs.nrx.items():		
+			nav_json = json.dumps(nrx['decoder'].nav, default=str)
+			status_json = json.dumps(nrx['decoder'].status, default=str)
+			connection_json = json.dumps(nrx['decoder'].connection, default=str)
+			# needs some form of ip address filter here
+			ws.send_message_all(nav_json, path="/nav.json?ip="+addr)
+			ws.send_message_all(status_json, path="/status.json?ip="+addr)
+			ws.send_message_all(connection_json, path="/connection.json?ip="+addr)
 
 # Start the program
 print("Use Ctrl-C to quit")
@@ -110,12 +136,23 @@ threading.Thread(target=serve_json).start()
 try:
 	# receive messages from web sockets
 	while(1):
-		message = ws.next_message()
-		print(message)
-		sock.sendto(bytes(message+"\n", "utf-8"), ("192.168.2.62",3001))
+		message,path = ws.recvpath() # Note: blocking
+		print(path + ": " + message)
+		
+		# Many ways to split out the query, none particularly elegant
+		ip1 = re.search(r'[?&]ip(=([^&#]*)|&|#|$)',path)
+		if not ip1: continue      # query not found
+		ip2 = ip1.group()         # ?ip=...
+		if len(ip2) < 4: continue # probably not necessary
+		ip = ip2[4:]              # ...
+		try:                      # because might not be valid IP
+		    sock.sendto(bytes(message+"\n", "utf-8"), (ip,3001))
+		except:
+			pass
+
 except KeyboardInterrupt as e:
 	print('Stopping')
-	# Needs extra help to stop threads, which may be blocked on sockets
+	# Needs extra code to stop threads, which may be blocked on sockets
 	try:
 		sys.exit(0)
 	except SystemExit:

@@ -17,6 +17,7 @@
         <tr> <th>Measurement</th>  <th>Value</th> <th>Units</th> </tr>
       </thead>
       <tr> <td>GpsTime</td>         <td id="GpsTime">---</td> <td></td> </tr>
+      <tr> <td>UtcTime</td>         <td id="UtcTime">---</td> <td></td> </tr>
       <tr> <td>Latitude</td>        <td id="Lat">---</td> <td>deg</td> </tr>
       <tr> <td>Longitude</td>       <td id="Lon">---</td> <td>deg</td> </tr>
       <tr> <td>Altitude</td>        <td id="Alt">---</td> <td>m</td> </tr>
@@ -49,7 +50,10 @@
 
       function doConnect()
       {
-        websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/nav.json");
+        const urlParams = new URLSearchParams(window.location.search);
+        const ip = urlParams.get('ip');
+        
+        websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/nav.json?ip="+ip);
         websocket.onopen = function(evt) { onOpen(evt) };
         websocket.onclose = function(evt) { onClose(evt) };
         websocket.onmessage = function(evt) { onMessage(evt) };
@@ -69,22 +73,24 @@
       function onMessage(evt)
       {
         let nav = JSON.parse(evt.data);
+        if (nav.UtcTime) nav.UtcTimeJ = new Date(nav.UtcTime)
         document.getElementById("GpsTime").innerHTML = nav.GpsTime;
+        document.getElementById("UtcTime").innerHTML = nav.UtcTimeJ;
         document.getElementById("Lat").innerHTML = (nav.Lat*57.295779513).toFixed(8);
         document.getElementById("Lon").innerHTML = (nav.Lon*57.295779513).toFixed(8);
-        document.getElementById("Alt").innerHTML = nav.Alt.toFixed(3);
-        document.getElementById("Vn").innerHTML = nav.Vn.toFixed(2);
-        document.getElementById("Ve").innerHTML = nav.Ve.toFixed(2);
-        document.getElementById("Vd").innerHTML = nav.Vd.toFixed(2);
-        document.getElementById("Ax").innerHTML = nav.Ax.toFixed(2);
-        document.getElementById("Ay").innerHTML = nav.Ay.toFixed(2);
-        document.getElementById("Az").innerHTML = nav.Az.toFixed(2);
-        document.getElementById("Heading").innerHTML = nav.Heading.toFixed(2);
-        document.getElementById("Pitch").innerHTML = nav.Pitch.toFixed(2);
-        document.getElementById("Roll").innerHTML = nav.Roll.toFixed(2);
-        document.getElementById("Wx").innerHTML = nav.Wx.toFixed(2);
-        document.getElementById("Wy").innerHTML = nav.Wy.toFixed(2);
-        document.getElementById("Wz").innerHTML = nav.Wz.toFixed(2);
+        document.getElementById("Alt").innerHTML = (nav.Alt*1.0).toFixed(3);
+        document.getElementById("Vn").innerHTML = (nav.Vn*1.0).toFixed(2);
+        document.getElementById("Ve").innerHTML = (nav.Ve*1.0).toFixed(2);
+        document.getElementById("Vd").innerHTML = (nav.Vd*1.0).toFixed(2);
+        document.getElementById("Ax").innerHTML = (nav.Ax*1.0).toFixed(2);
+        document.getElementById("Ay").innerHTML = (nav.Ay*1.0).toFixed(2);
+        document.getElementById("Az").innerHTML = (nav.Az*1.0).toFixed(2);
+        document.getElementById("Heading").innerHTML = (nav.Heading*1.0).toFixed(2);
+        document.getElementById("Pitch").innerHTML = (nav.Pitch*1.0).toFixed(2);
+        document.getElementById("Roll").innerHTML = (nav.Roll*1.0).toFixed(2);
+        document.getElementById("Wx").innerHTML = (nav.Wx*1.0).toFixed(2);
+        document.getElementById("Wy").innerHTML = (nav.Wy*1.0).toFixed(2);
+        document.getElementById("Wz").innerHTML = (nav.Wz*1.0).toFixed(2);
       }
       
       function updateId(status,id)

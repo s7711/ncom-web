@@ -28,8 +28,9 @@ Decoder for OxTS NCOM data stream
 Decodes measurements into dictionaries
   nav - navigation measurements
   status - status and configuration
+  connection - information about the decoding (characters, skipped, etc)
 
- Two dictionaries are used because the nav measurements are at 100Hz
+ Multiple dictionaries are used because the nav measurements are at 100Hz
  and the status/configuration measurements are slower
 
  Special packets (e.g. feature codes) are not decoded
@@ -41,7 +42,6 @@ Decodes measurements into dictionaries
 
 import struct
 import datetime
-import math
 
 ########################################################################
 # Definitions: from NComRx.c
@@ -120,7 +120,7 @@ RAD2DEG             = 57.29577951308232   # 180/pi
 
 ########################################################################
 # Other constants
-GPS_STARTTIME = datetime.datetime(1980,1,6)
+GPS_STARTTIME = datetime.datetime(1980,1,6,tzinfo=datetime.timezone.utc)
 
 
 ########################################################################
@@ -155,11 +155,11 @@ class NcomRx(object):
 
     ####################################################################
     # decode() is the normal function to call when new data is available
-    # It will update the 'nav' and 'status' dictionaries with
-    #  new measurements; the 'connection' dictionary holds decode info
+    # It will update the nav, status and connection dictionaries with
+    # new measurements.
     # Only one packet will be decoded so either ensure that
-    #  rxBytes <= NOUTPUT_PACKET_LENGTH or call multiple times until
-    #  return value is 0
+    # rxBytes <= NOUTPUT_PACKET_LENGTH or call multiple times until
+    # return value is 0
     def decode(self,rxBytes, machineTime=None):
         # ncomBytes should be a bytes object
         # Returns 1 if packet is decoded
@@ -171,13 +171,13 @@ class NcomRx(object):
         
         # Find the first valid packet
         skipped = 0
-        while(1):
+        while True:
             # Find the NCOM_SYNC
             syncOffset = self.ncomBytes.find(NCOM_SYNC)
             
             # -1 means there is no sync or valid packet in ncomBytes
             if syncOffset < 0:
-                skipped += len(ncomBytes)
+                skipped += len(self.ncomBytes)
                 self.connection['numChars'] += skipped
                 self.connection['skippedChars'] += skipped
                 self.ncomBytes = b''
@@ -207,9 +207,13 @@ class NcomRx(object):
         # ... Must have a valid packet or we would have returned
         # Decode NavStatus to find what other fields are valid
         self.nav['NavStatus'] = int(self.ncomBytes[21])
+        self.status['NavStatus'] = int(self.ncomBytes[21])
         
         if self.nav['NavStatus'] in [0,5,6,7]:
             self.status = {}
+            # Remove this packet
+            self.ncomBytes = self.ncomBytes[NOUTPUT_PACKET_LENGTH:]
+            self.connection['unprocessedBytes'] = len(self.ncomBytes)
             return 1 # All quantities are invalid
         
         if self.nav['NavStatus'] in [1,2,3,4,20,21,22]:        
@@ -218,9 +222,9 @@ class NcomRx(object):
             self.nav['Ax'] = int.from_bytes(self.ncomBytes[3:6],   byteorder = 'little', signed=True) * ACC2MPS2
             self.nav['Ay'] = int.from_bytes(self.ncomBytes[6:9],   byteorder = 'little', signed=True) * ACC2MPS2
             self.nav['Az'] = int.from_bytes(self.ncomBytes[9:12],  byteorder = 'little', signed=True) * ACC2MPS2
-            self.nav['Wx'] = int.from_bytes(self.ncomBytes[12:15], byteorder = 'little', signed=True) * RATE2RPS
-            self.nav['Wy'] = int.from_bytes(self.ncomBytes[15:18], byteorder = 'little', signed=True) * RATE2RPS
-            self.nav['Wz'] = int.from_bytes(self.ncomBytes[18:21], byteorder = 'little', signed=True) * RATE2RPS
+            self.nav['Wx'] = int.from_bytes(self.ncomBytes[12:15], byteorder = 'little', signed=True) * RATE2RPS * RAD2DEG
+            self.nav['Wy'] = int.from_bytes(self.ncomBytes[15:18], byteorder = 'little', signed=True) * RATE2RPS * RAD2DEG
+            self.nav['Wz'] = int.from_bytes(self.ncomBytes[18:21], byteorder = 'little', signed=True) * RATE2RPS * RAD2DEG
 
             # Create sensible time format
             # See if seconds have wrapped
@@ -233,8 +237,10 @@ class NcomRx(object):
             try:
                 self.nav['GpsTime'] = GPS_STARTTIME + \
                     datetime.timedelta( minutes=self.status['GpsMinutes'], seconds=self.nav['GpsSeconds'] )
+                self.status['GpsTime'] = self.nav['GpsTime']
                 self.nav['UtcTime'] = self.nav['GpsTime'] + \
                     datetime.timedelta( seconds=self.status['TimeUtcOffset'] )
+                self.status['UtcTime'] = self.nav['UtcTime']
             except: # Most likely is that 'GpsMinutes' or 'TimeUtcOffset' is not available
                 pass
             
@@ -285,6 +291,7 @@ class NcomRx(object):
 
         # Remove this packet
         self.ncomBytes = self.ncomBytes[NOUTPUT_PACKET_LENGTH:]
+        self.connection['unprocessedBytes'] = len(self.ncomBytes)
 
         return 1
 
@@ -326,29 +333,41 @@ class NcomRx(object):
 
     def decodeStatus1(self,statusBytes):
         # Kalman filter innovations set 1 (position, velocity, attitude)
-        self.status['InnPosX'] = (int.from_bytes(statusBytes[0:1], byteorder = 'little', signed=True)>>1) * INNFACTOR
-        if statusBytes[0]&0x1 == 0x0: del self.status['InnPosX']
-        
-        self.status['InnPosY'] = (int.from_bytes(statusBytes[1:2], byteorder = 'little', signed=True)>>1) * INNFACTOR
-        if statusBytes[1]&0x1 == 0x0: del self.status['InnPosY']
+        self._updateInnovation( 'InnPosX', statusBytes[0:1] )
+        self._updateInnovation( 'InnPosY', statusBytes[1:2] )
+        self._updateInnovation( 'InnPosZ', statusBytes[2:3] )
+        self._updateInnovation( 'InnVelX', statusBytes[3:4] )
+        self._updateInnovation( 'InnVelY', statusBytes[4:5] )
+        self._updateInnovation( 'InnVelZ', statusBytes[5:6] )
+        self._updateInnovation( 'InnHeading', statusBytes[6:7] )
+        self._updateInnovation( 'InnPitch', statusBytes[7:8] )
 
-        self.status['InnPosZ'] = (int.from_bytes(statusBytes[2:3], byteorder = 'little', signed=True)>>1) * INNFACTOR
-        if statusBytes[2]&0x1 == 0x0: del self.status['InnPosZ']
 
-        self.status['InnVelX'] = (int.from_bytes(statusBytes[3:4], byteorder = 'little', signed=True)>>1) * INNFACTOR
-        if statusBytes[3]&0x1 == 0x0: del self.status['InnVelX']
-
-        self.status['InnVelY'] = (int.from_bytes(statusBytes[4:5], byteorder = 'little', signed=True)>>1) * INNFACTOR
-        if statusBytes[4]&0x1 == 0x0: del self.status['InnVelY']
-
-        self.status['InnVelZ'] = (int.from_bytes(statusBytes[5:6], byteorder = 'little', signed=True)>>1) * INNFACTOR
-        if statusBytes[5]&0x1 == 0x0: del self.status['InnVelZ']
-
-        self.status['InnHeading'] = (int.from_bytes(statusBytes[6:7], byteorder = 'little', signed=True)>>1) * INNFACTOR
-        if statusBytes[6]&0x1 == 0x0: del self.status['InnHeading']
-
-        self.status['InnPitch'] = (int.from_bytes(statusBytes[7:8], byteorder = 'little', signed=True)>>1) * INNFACTOR
-        if statusBytes[7]&0x1 == 0x0: del self.status['InnPitch']
+    def _updateInnovation(self, k, b ):
+        # Updating innovations is a little long-winded and repeative
+        # so this function tidies things up
+        # Both the actual value and a "filtered" value are added
+        # The "filtered" value is usually more useful
+        # The filter is non-linear. The abs() of the innovation is used
+        # and larger innovations are not filtered whereas smaller ones
+        # decay slowly
+        # k is the key (and "Filt" is added for the filtered versions
+        # b is the bytes array from statusBytes
+        inn = (int.from_bytes(b, byteorder = 'little', signed=True)>>1) * INNFACTOR
+        if b[0]&0x1 == 0x0:
+            if k in self.status:
+                del self.status[k]
+        else:
+            self.status[k] = inn # add/update this innovation
+            
+            inn = abs(inn)       # abs() for filtering
+            kf = k + 'Filt'      # filtered key
+            if kf not in self.status:
+                self.status[kf] = inn    # New, so add the filtered key
+            elif inn > self.status[kf]:  # innovation larger (than filtered key)
+                self.status[kf] = inn    # so let it jump straight to the new value
+            else:                        # Else decay slowly - not an exact filter
+                self.status[kf] = 0.9 * self.status[kf] + 0.1 * inn
 
 
     def _updateLE16(self, s, measurement ):
@@ -793,24 +812,15 @@ class NcomRx(object):
 
     def decodeStatus32(self,statusBytes):
         # Kalman filter innovations for zero velocity, advanced slip, etc.
-        self.status['ZeroVelX'] = (statusBytes[0]>>1)  * INNFACTOR
-        if statusBytes[0]&0x1 == 0x0: del self.status['ZeroVelX']
-        
-        self.status['ZeroVelY'] = (statusBytes[1]>>1) * INNFACTOR
-        if statusBytes[1]&0x1 == 0x0: del self.status['ZeroVelY']
-
-        self.status['ZeroVelZ'] = (statusBytes[2]>>1) * INNFACTOR
-        if statusBytes[2]&0x1 == 0x0: del self.status['ZeroVelZ']
-
-        self.status['InnNoSlipH'] = (statusBytes[3]>>1) * INNFACTOR
-        if statusBytes[3]&0x1 == 0x0: del self.status['InnNoSlipH']
-
-        self.status['InnHeadingH'] = (statusBytes[4]>>1) * INNFACTOR
-        if statusBytes[4]&0x1 == 0x0: del self.status['InnHeadingH']
-
-        self.status['InnWSpeed'] = (statusBytes[5]>>1) * INNFACTOR
-        if statusBytes[5]&0x1 == 0x0: del self.status['InnWSpeed']
-        
+        self._updateInnovation( 'InnZeroVelX', statusBytes[0:1] )
+        self._updateInnovation( 'InnZeroVelY', statusBytes[0:1] )
+        self._updateInnovation( 'InnZeroVelZ', statusBytes[0:1] )
+        self._updateInnovation( 'InnNoSlipH', statusBytes[0:1] )
+        self._updateInnovation( 'InnHeadingH', statusBytes[0:1] )
+        self._updateInnovation( 'InnWSpeed', statusBytes[0:1] )
+        self._updateInnovation( 'InnZeroVelX', statusBytes[0:1] )
+        self._updateInnovation( 'InnZeroVelX', statusBytes[0:1] )
+                
     
     def decodeStatus33(self,statusBytes):
         # Zero velocity lever arm

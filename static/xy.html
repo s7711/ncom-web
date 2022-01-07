@@ -10,6 +10,7 @@
     
   </head>
   <body>
+    <h1><a href="index.html" style=text-decoration:none>XY plot</a></h1>
     <div id="chart_div" style="width: 900px; height: 500px;"></div>
     <table border=1 class="dataframe, dataframe2">
       <thead>
@@ -55,7 +56,10 @@
 
       function doConnect()
       {
-        websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/nav.json");
+        const urlParams = new URLSearchParams(window.location.search);
+        const ip = urlParams.get('ip');
+
+        websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/nav.json?ip="+ip);
         websocket.onopen = function(evt) { onOpen(evt) };
         websocket.onclose = function(evt) { onClose(evt) };
         websocket.onmessage = function(evt) { onMessage(evt) };

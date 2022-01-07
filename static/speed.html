@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>OxTS Speed</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="favicon.png">
+    <script type="text/javascript" src="loader.js"></script>
+
+    <!--Styles specific to this page -->    
+    <style> 
+      .rcorners1 {
+        border-radius: 25px;
+        background: #ca181c;
+        padding: 20px;
+        margin: 10px;
+      }  
+      .meas1 {
+        font-size: 20px;
+        font-weight: bold;
+        color: white;     
+        margin: 0px; 
+      }
+      .value1 {
+        font-size: 80px;
+        font-weight: bold;
+        text-align: right;
+        color: white;      
+        margin: 0px; 
+      }
+      .rcorners2 {
+        border-radius: 12px;
+        border: 2px solid #ca181c;
+        padding: 10px;
+        margin: 5px;
+      }  
+      .meas2 {
+        font-size: 10px;
+        font-weight: bold;
+        color: #ca181c;     
+        margin: 0px; 
+      }
+      .value2 {
+        font-size: 40px;
+        font-weight: bold;
+        text-align: right;
+        color:  #ca181c;      
+        margin: 0px; 
+      }
+      .loadbar
+      {
+           border-radius: 4px;
+           width:10px;
+           height:40px;
+           border:1px solid #ca181c;
+           position:relative; 
+      }
+      .bar
+      {
+          width:100%;
+          display:block;        
+          font-family:arial;
+          font-size:12px; 
+          background-color:#ca181c;
+          position:absolute;
+          bottom:0;        
+      }      
+    </style>
+  </head>
+  <body>
+    <h1><a href="index.html" style=text-decoration:none>Speed</a></h1>
+    <div class="rcorners1">
+      <p class="meas1">Speed (km/h &plusmn;<span id="mf2_AccSpeedKmh">?</span> 1&sigma;)</p>
+      <p class="value1" id="mf2_SpeedKmh">- - -</p>
+    </div>
+    <div class="rcorners1">
+      <p class="meas1">Heading (degrees &plusmn;<span id="mf2_HeadingAcc">?</span> 1&sigma;)</p>
+      <p class="value1" id="mf2_Heading">- - -</p>
+    </div>
+    <table style="width:100%;">
+      <tr>
+        <td>
+          <div class="rcorners2">
+            <p class="meas2">GNSS satellites</p>
+            <p class="value2" id="mi_GpsNumObs">- - -</p>
+          </div>
+        </td>
+        <td>
+          <div class="rcorners2">
+            <p class="meas2">GNSS position mode</p>
+            <p class="value2" id="mi_GpsPosMode">- - -</p>
+          </div>
+        </td>
+        <td>
+          <div class="rcorners2">
+            <p class="meas2">GNSS velocity mode</p>
+            <p class="value2" id="mi_GpsVelMode">- - -</p>
+          </div>
+        </td>
+        <td>
+          <div class="rcorners2">
+            <p class="meas2">GNSS attitude mode</p>
+            <p class="value2" id="mi_GpsAttMode">- - -</p>
+          </div>
+        </td>
+        <td>
+          <div class="rcorners2">
+            <p class="meas2">Innovations</p>
+            <table>
+              <tr>
+                <td><div class="loadbar"><strong class="bar" style='height:50%;' id="InnPosX"></strong></div></td>
+                <td><div class="loadbar"><strong class="bar" style='height:50%;' id="InnPosY"></strong></div></td>
+                <td><div class="loadbar"><strong class="bar" style='height:50%;' id="InnPosZ"></strong></div></td>
+                <td><div class="loadbar"><strong class="bar" style='height:50%;' id="InnVelX"></strong></div></td>
+                <td><div class="loadbar"><strong class="bar" style='height:50%;' id="InnVelY"></strong></div></td>
+                <td><div class="loadbar"><strong class="bar" style='height:50%;' id="InnVelZ"></strong></div></td>
+                <td><div class="loadbar"><strong class="bar" style='height:50%;' id="InnHeading"></strong></div></td>
+                <td><div class="loadbar"><strong class="bar" style='height:50%;' id="InnPitch"></strong></div></td>
+              </tr>
+            </table>
+          </div>
+        </td>
+      </tr>
+    </table>
+    <table style="width:100%;">
+      <tr>
+        <td style="width: 50%;"><div class="rcorners2"><div id="chart_a" style="width: 100%; height: 200px;"></div></div></td>
+        <td style="width: 50%;"><div class="rcorners2"><div id="chart_w" style="width: 100%; height: 200px;"></div></div></td>
+      </tr>
+    </table>
+
+    <!--Javascript to run this page -->    
+    <script language="javascript" type="text/javascript">
+            
+      function init()
+      {
+        // Connect to the web sockets
+        disconnected_nav = true;
+        disconnected_status = true;
+        doConnect_nav();
+        doConnect_status();
+        
+        // Time for the charts is not trivial
+        // Easiest solution is just to have a local counter
+        // that does something like seconds
+        chart_time = 0.0;        
+        
+        // Set up the acceleration graph
+        data_a = new google.visualization.DataTable();
+        data_a.addColumn('number','Time');
+        data_a.addColumn('number','X');
+        data_a.addColumn('number','Y');
+        data_a.addColumn('number','Z');
+        
+        chart_a = new google.visualization.LineChart(document.getElementById('chart_a'));
+        options_a = {
+          title: 'Accelerations (m/s\u00B2)',
+          legend: { position: 'bottom' },
+          vAxis: { minValue: -20.0, maxValue: 20.0 }
+        };
+        
+        // Set up the angular rate graph
+        data_w = new google.visualization.DataTable();
+        data_w.addColumn('number','Time');
+        data_w.addColumn('number','X');
+        data_w.addColumn('number','Y');
+        data_w.addColumn('number','Z');
+
+        chart_w = new google.visualization.LineChart(document.getElementById('chart_w'));
+        options_w = {
+          title: 'Angular rates (degrees/s)',
+          legend: { position: 'bottom' },
+          vAxis: { minValue: -50.0, maxValue: 50.0 }
+        };
+      }
+      
+      // updateId is a useful function to update the innerHTML from
+      // the measurements from the websockets
+      // The element's id should be in the form mi_NcomName
+      // where NcomName is the key name
+      // For example mi_GpsTime would find "GpsTime" in meas and update
+      // the element with Id mi_GpsTime
+      // This is a way of shortening the code
+      // Note: using this scheme it is only possible to have one element
+      // updated using each key in meas.
+      function updateId(meas,id)
+      {
+        s = meas[id.substring(3)];
+        if (s != undefined)
+          document.getElementById(id).innerHTML = s;
+      }
+      
+      // updateIdF is the same as updateId except it formats floating
+      // point numbers. The format is mf0_NcomName where "0" is the
+      // precision (0-9)
+      function updateIdF(meas,id)
+      {
+        let precision = parseInt(id[2]);
+        s = meas[id.substring(4)];
+        if (s != undefined)
+          document.getElementById(id).innerHTML = s.toFixed(precision);      
+      }      
+
+      // doConnect...() is called to open a web socket
+      function doConnect_nav()
+      {
+        // The IP address is encoded in the query in the web address
+        // If we don't request an IP address then we won't get any data
+        // And, if there is no INS at that IP address then we also
+        // won't get any data
+        // Hopefully the query has been set correctly by page index.html
+        const urlParams = new URLSearchParams(window.location.search);
+        const ip = urlParams.get('ip');
+        
+        // Open the websocket
+        websocket_nav = new WebSocket(
+          // Build the web socket address
+          // Like ws://192.168.2.10:8000/nav,json?ip=192.168.2.62
+          "ws://"
+          + window.location.hostname
+          + ":" + window.location.port
+          + "/nav.json?ip="
+          + ip
+        );
+        // Set the callback functions for the websocket
+        websocket_nav.onopen = onOpen_nav;
+        websocket_nav.onclose = onClose_nav;
+        websocket_nav.onmessage = onMessage_nav;
+        websocket_nav.onerror = onError_nav;
+      }
+
+      // onOpen...() is a callback when the websocket is opened
+      // We just set disconnected_... to false so we know that the
+      // websocket is open
+      function onOpen_nav(evt)
+      {
+        disconnected_nav = false;
+      }
+
+      // onClose...() is a callback when the websocket is closed
+      // for example if the network goes down, or the ncom-web stops
+      // We just set disconnected_... to true so we know that the
+      // websocket is closed (and then the timer will try to open it)
+      function onClose_nav(evt)
+      {
+        disconnected_nav = true;
+      }
+      
+      // onError...() is a callback when the websocket has an error
+      // We just close it, set disconnected to true and then the
+      // timer will try and open another one
+      function onError_nav(evt)
+      {
+        websocket_nav.close();
+        disconnected_nav = true;
+      }      
+
+      // onMessage_nav is called when a nav message is received on the
+      // websocket. All of the updating of the web page is done here
+      function onMessage_nav(evt)
+      {
+        let nav = JSON.parse(evt.data);
+
+        // Some extended calculations needed for this page
+        nav.SpeedKmh = (nav.Vn**2 + nav.Ve**2)**0.5*3.6;
+
+        // Employ a cheat to make it easier to update the document
+        // All <p> elements with an id starting with "m_"
+        // are assumed to be measurements in status
+        // This for-loop updates them
+        for (el of document.getElementsByTagName("p") )
+        {
+          if (/^m[is]_/.test(el.id))
+            updateId(nav,el.id);
+          else if (/^mf[0-9]_/.test(el.id))
+            updateIdF(nav,el.id);
+        }
+        
+        // Update the charts
+        chart_time += 0.5; // Assuming the nav rate is 0.5s TODO: better time
+        data_a.addRow([chart_time,nav.Ax,nav.Ay,nav.Az]);
+        data_w.addRow([chart_time,nav.Wx,nav.Wy,nav.Wz]);
+        if( data_a.Wf.length > 60 ) data_a.removeRow(0);
+        if( data_w.Wf.length > 60 ) data_w.removeRow(0);          
+        
+        chart_a.draw(data_a, options_a);
+        chart_w.draw(data_w, options_w);
+      }
+      
+      // See doConnect_nav()
+      function doConnect_status()
+      {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ip = urlParams.get('ip');
+        
+        websocket_status = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/status.json?ip="+ip);
+        websocket_status.onopen = onOpen_status;
+        websocket_status.onclose = onClose_status;
+        websocket_status.onmessage = onMessage_status;
+        websocket_status.onerror = onError_status;
+      }
+
+      // See onOpen_nav()
+      function onOpen_status(evt)
+      {
+        disconnected_status = false;
+      }
+
+      // See onClose_nav()
+      function onClose_status(evt)
+      {
+        disconnected_status = true;
+      }
+      
+      // See onError_nav()
+      function onError_status(evt)
+      {
+        websocket_status.close();
+        disconnected_status = true;
+      }
+
+      // onMessage_status is called when a status message is received on
+      // the websocket. All of the updating of the web page is done here
+      function onMessage_status(evt)
+      {
+        let status = JSON.parse(evt.data);
+        
+        // Extended calculations needed for this page
+        status.AccSpeedKmh = (status.VnAcc**2+status.VeAcc**2)**0.5 * 3.6; //km/h
+
+        // Employ a cheat to make it easier to update the document
+        // All <td> elements with an id starting with "m_"
+        // are assumed to be measurements in status
+        // This for-loop updates them
+        for (el of document.getElementsByTagName("*") )
+        {
+          if (/^m[is]_/.test(el.id))
+            updateId(status,el.id);
+          else if (/^mf[0-9]_/.test(el.id))
+            updateIdF(status,el.id);
+        }
+        
+        // Update the innovation bars
+        updateInnovationBar( "InnPosX", status.InnPosXFilt )        
+        updateInnovationBar( "InnPosY", status.InnPosYFilt )        
+        updateInnovationBar( "InnPosZ", status.InnPosZFilt )        
+        updateInnovationBar( "InnVelX", status.InnVelXFilt )        
+        updateInnovationBar( "InnVelY", status.InnVelYFilt )        
+        updateInnovationBar( "InnVelZ", status.InnVelZFilt )        
+        updateInnovationBar( "InnHeading", status.InnHeadingFilt )        
+        updateInnovationBar( "InnPitch", status.InnPitchFilt )        
+      }
+      
+      // The innovation bars are simply two elements, the outer one
+      // has the border. The inner one colors the bar from the bottom.
+      // Update the height (in %) from the innovation, assuming
+      // the maximum innovation value is 3.0.
+      function updateInnovationBar( el, inn )
+      {
+        inn = inn * 100.0 / 3.0;
+        if( inn < 0.0 ) inn = -inn; // Filtered innovations should already be +ve
+        if( inn > 100.0 ) inn = 100.0;
+        document.getElementById(el).style="height:"+inn+"%";
+      }
+
+      // drawChart is only called at the start, once the chart object
+      // has loaded. When data starts being received then the charts
+      // are drawn again to update the data
+      function drawChart() {
+        chart_a.draw(data_a, options_a);
+        chart_w.draw(data_w, options_w);
+      }      
+      
+      // ***************************************************************
+      // *** All the supporting functions are defined, here the script
+      // *** executes
+      // ***************************************************************
+      
+      // Set up the timer, which will reconnect the websockets if they
+      // are disconnected
+      timer = setInterval(function() { 
+          if(disconnected_nav == true) {
+            doConnect_nav();
+          }
+          if(disconnected_status == true) {
+            doConnect_status();
+          }
+        }, 5000); // Retry every 5000ms
+
+      // Run init() once the page has loaded
+      window.addEventListener("load", init, false);
+
+      // Load the google charts
+      google.charts.load('current', {'packages':['corechart']});
+      google.charts.setOnLoadCallback(drawChart);
+
+    </script>
+  </body>
+</html>

@@ -23,10 +23,13 @@
     </thead>
     <!-- Note: the id of the <td> cell used to match the key -->
     <!-- See onMessage() for format -->
+      <tr> <td>IP address</td>         <td id="ms_ip">---</td>     <td></td> </tr>
       <tr> <td>Chars received</td>     <td id="mi_numChars">---</td>     <td></td> </tr>
       <tr> <td>Chars skipped</td>      <td id="mi_skippedChars">---</td> <td></td> </tr>
       <tr> <td>Packets received</td>   <td id="mi_numPackets">---</td>   <td></td> </tr>
       <tr> <td>Time offset</td>        <td id="mf4_timeOffset">---</td>   <td>s</td> </tr>
+      <tr> <td>Repeated UDP</td>       <td id="mi_repeatedUdp">---</td>   <td></td> </tr>
+      <tr> <td>Unprocessed bytes</td>  <td id="mi_unprocessedBytes">---</td>   <td></td> </tr>
   </table>
 
 
@@ -45,7 +48,10 @@
 
     function doConnect()
     {
-      websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/connection.json");
+      const urlParams = new URLSearchParams(window.location.search);
+      const ip = urlParams.get('ip');
+      
+      websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/connection.json?ip="+ip);
       websocket.onopen = function(evt) { onOpen(evt) };
       websocket.onclose = function(evt) { onClose(evt) };
       websocket.onmessage = function(evt) { onMessage(evt) };

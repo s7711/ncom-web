@@ -26,23 +26,21 @@
 """
 ncomrx_thread.py
 
-Extends ncomrx so that the decode gets data from a socket
-Runs as a background thread
-
-NOTE: this version only works when there is one NCOM broadcaster on the
-network.
+Sets up a background thread, which receives data from OxTS INSs
+(on port 3000). Each IP address is send to a separate NComRx decoder.
 
 Use by:
 
-nrx = ncomrx_thread.NcomRxThread()
+nrxs = ncomrx_thread.NcomRxThread()
 
-then access dictonaries nrx.nav and nrx.status for the navigation
-and status messages
+nrxs.nrx['<ip>']['decoder'] will be an NcomRx class that can be used to
+access the decoded data. For example:
 
-Call nrx.stop() to end, but note that the thread will be blocked on
+  nrxs.nrx['192.168.2.62']['decoder'].nav['GpsTime']
+
+Call nrxs.stop() to end, but note that the thread will be blocked on
 data from the socket so it will only stop after data is received.
 """
-
 
 import time
 import socket
@@ -51,49 +49,49 @@ import collections
 import binascii
 import threading
 
-#import gpiozero # Debugging
 
-
-class NcomRxThread(threading.Thread, ncomrx.NcomRx):
+class NcomRxThread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.daemon_threads = True
         ncomrx.NcomRx.__init__(self)
         self.keepGoing = True
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.settimeout(0.5)
         self.sock.bind(('', 3000))
-        self.crcList = collections.deque(maxlen=200)
-        #self.pin = gpiozero.LED(24) # Debugging
-        #self.exceptions = 0 # Debugging
+        self.nrx = {}
         self.start()
     
     def run(self):
-        rb = b""                    # Remaining bytes from previous data
         while(self.keepGoing):
             # Get data from socket
-            nb = self.sock.recv(256) # New bytes
+            nb, addrport = self.sock.recvfrom(256) # New bytes
             myTime = time.perf_counter() # Grab time asap
             
-            # Remove duplicate packets by computing and testing CRC
+            addr = addrport[0] # Just grab the IP address, not port
+            
+            # Is this a new IP address
+            if addr not in self.nrx:
+                # Then create a new crclist and decoder in nrx
+                self.nrx[addr] = {
+                    'crcList': collections.deque(maxlen=200),
+                    'decoder': ncomrx.NcomRx()
+                    }
+                # Add IP address to connection, useful for user
+                self.nrx[addr]['decoder'].connection['ip'] = addr
+                self.nrx[addr]['decoder'].connection['repeatedUdp'] = 0
+            
+            # Under linux, UDP packets can be repeated, which messes up
+            # the ncom decoding. Compute CRC and use it to identify
+            # repeated packets
             crc = binascii.crc32(nb)
-            if crc not in self.crcList:                
-                self.crcList.append(crc)
-                self.decode(nb, machineTime=myTime)
-                                                                                
-                """
-                # This code is used to test the timing by setting
-                # the pin (on the raspberry pi) high when the NCOM
-                # message at the start of the second is received
-                try:
-                    t = ((self.nav['GpsSeconds'] % 1.0) * 1000.0)
-                    if t >= 0.0 and t < 9.0:
-                        self.pin.on()
-                    else:
-                        self.pin.off()
-                except:
-                    self.exceptions += 1
-                """
-                        
+            if crc not in self.nrx[addr]['crcList']:
+                self.nrx[addr]['crcList'].append(crc)                
+                self.nrx[addr]['decoder'].decode(nb, machineTime=myTime)
+                # And process all possible data
+                while self.nrx[addr]['decoder'].decode(b'', machineTime=myTime):
+                    pass
+            else:
+                self.nrx[addr]['decoder'].connection['repeatedUdp'] += 1
+                                        
     def stop(self):
         self.keepGoing = False

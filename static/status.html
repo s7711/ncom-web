@@ -12,6 +12,20 @@
   <p>
     Send: <input type="text" id="send_text" onkeypress="javascript:doit_onkeypress(event);" />
   </p>
+  <h2>Navigation Status</h2>
+    <table border=1 class="dataframe, dataframe2">
+        <thead>
+          <tr style="text-align:right;">
+            <th>Measurement</th>
+            <th>Value</th>
+            <th>Units</th>
+          </tr>
+        </thead>
+        <tr> <td>Navigation Status</td>  <td id="mi_NavStatus">---</td> <td></td> </tr>
+        <tr> <td>GpsTime</td>            <td id="mi_GpsTime">---</td> <td></td> </tr>
+        <tr> <td>UtcTime</td>            <td id="mi_UtcTime">---</td> <td></td> </tr>
+  </table>
+  
   <h2>Accuracy</h2>
   <table border=1 class="dataframe, dataframe2">
     <thead>
@@ -64,17 +78,17 @@
       <tr style="text-align:right;">
         <th>Measurement</th>
         <th>Value</th>
-        <th>Units</th>
+        <th>Filtered</th>
       </tr>
     </thead>
-    <tr> <td>Innovation position X</td>   <td id="mf1_InnPosX">---</td> <td></td> </tr>
-    <tr> <td>Innovation position Y</td>   <td id="mf1_InnPosY">---</td> <td></td> </tr>
-    <tr> <td>Innovation position Z</td>   <td id="mf1_InnPosZ">---</td> <td></td> </tr>
-    <tr> <td>Innovation velocity X</td>   <td id="mf1_InnVelX">---</td> <td></td> </tr>
-    <tr> <td>Innovation velocity Y</td>   <td id="mf1_InnVelY">---</td> <td></td> </tr>
-    <tr> <td>Innovation velocity Z</td>   <td id="mf1_InnVelZ">---</td> <td></td> </tr>
-    <tr> <td>Innovation heading</td>      <td id="mf1_InnHeading">---</td> <td></td> </tr>
-    <tr> <td>Innovation pitch</td>        <td id="mf1_InnPitch">---</td> <td></td> </tr>
+    <tr> <td>Innovation position X</td>   <td id="mf1_InnPosX">---</td> <td id="mf1_InnPosXFilt">---</td> </tr>
+    <tr> <td>Innovation position Y</td>   <td id="mf1_InnPosY">---</td> <td id="mf1_InnPosYFilt">---</td> </tr>
+    <tr> <td>Innovation position Z</td>   <td id="mf1_InnPosZ">---</td> <td id="mf1_InnPosZFilt">---</td> </tr>
+    <tr> <td>Innovation velocity X</td>   <td id="mf1_InnVelX">---</td> <td id="mf1_InnVelXFilt">---</td> </tr>
+    <tr> <td>Innovation velocity Y</td>   <td id="mf1_InnVelY">---</td> <td id="mf1_InnVelYFilt">---</td> </tr>
+    <tr> <td>Innovation velocity Z</td>   <td id="mf1_InnVelZ">---</td> <td id="mf1_InnVelZFilt">---</td> </tr>
+    <tr> <td>Innovation heading</td>      <td id="mf1_InnHeading">---</td> <td id="mf1_InnHeadingFilt">---</td> </tr>
+    <tr> <td>Innovation pitch</td>        <td id="mf1_InnPitch">---</td> <td id="mf1_InnPitchFilt">---</td> </tr>
     <tr> <td>Innovation no slip</td>      <td id="mf1_InnNoSlipH">---</td> <td></td> </tr>
     <tr> <td>Innovation heading lock</td> <td id="mf1_InnHeadingH">---</td> <td></td> </tr>
     <tr> <td>Innovation wheel speed</td>  <td id="mf1_InnWSpeed">---</td> <td></td> </tr>
@@ -102,7 +116,7 @@
     <tr> <td>Accelerometer Z Bias</td>  <td id="mf4_AzBias">---</td> <td id="mf4_AzBiasAcc">---</td><td>m/s&sup2</td> </tr>
   </table>
 
-  <h2>States</h2>
+  <h2>GNSS states</h2>
     <table border=1 class="dataframe, dataframe2">
     <thead>
       <tr style="text-align:right;">
@@ -173,6 +187,10 @@
     <tr> <td>GNSS primary packets</td>          <td id="mi_GpsPrimaryPkts">---</td> <td></td> </tr>
     <tr> <td>GNSS primary chars skipped</td>    <td id="mi_GpsPrimaryCharsSkipped">---</td> <td></td> </tr>
     <tr> <td>GNSS primary packets too old</td>  <td id="mi_GpsPrimaryOldPkts">---</td> <td></td> </tr>
+    <tr> <td>GNSS secondary chars</td>            <td id="mi_GpsSecondaryChars">---</td> <td></td> </tr>
+    <tr> <td>GNSS secondary packets</td>          <td id="mi_GpsSecondaryPkts">---</td> <td></td> </tr>
+    <tr> <td>GNSS secondary chars skipped</td>    <td id="mi_GpsSecondaryCharsSkipped">---</td> <td></td> </tr>
+    <tr> <td>GNSS secondary packets too old</td>  <td id="mi_GpsSecondaryOldPkts">---</td> <td></td> </tr>
   </table>
 
 
@@ -192,7 +210,10 @@
 
     function doConnect()
     {
-      websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/status.json");
+      const urlParams = new URLSearchParams(window.location.search);
+      const ip = urlParams.get('ip');
+
+      websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/status.json?ip="+ip);
       websocket.onopen = function(evt) { onOpen(evt) };
       websocket.onclose = function(evt) { onClose(evt) };
       websocket.onmessage = function(evt) { onMessage(evt) };
