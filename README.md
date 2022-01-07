@@ -4,7 +4,7 @@ ncom-web is a python program that receives NCOM data from OxTS INSs (RT3000, xNA
 * Download the repository
 * Run **python main.py**
 * Go to web page http://\<*ip address*\>:8000
-* Select the web page tamplate for the INS that you want to view
+* Select the web page template for the INS that you want to view
 
 This version supports multiple INSs, so can work in an RT-Range application (though it doesn't decode any RT-Range data). The following page templates are available:
 * Speed - shows the speed, heading, GNSS mode, acceleration and angular rates
@@ -21,7 +21,7 @@ In my setup I had a Raspberry Pi with:
 
 My xNAV550 had its IP address changed to 192.168.2.62.
 
-Effectively I have separated my xNAV550's network from my office network but I can still talk to the xNAV550, see its outputs and send commands to it (like the command to force initialisation). You do not need separate networks and it will work fine one network.
+Effectively I have separated my xNAV550's network from my office network but I can still talk to the xNAV550, see its outputs and send commands to it (like the command to force initialisation). You do not need separate networks and it will work fine on one network.
 
 The web page templates are pretty basic and you may want to change/improve them. You can use the pages as examples and add custom pages. The web pages are saved in the "static" directory.
 
