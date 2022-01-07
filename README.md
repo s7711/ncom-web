@@ -21,13 +21,13 @@ Some of the pages can send commands to the INS, which is useful when initialisin
 
 In my setup I had a Raspberry Pi with:
 * **eth0** configured using a static IP address (192.168.2.11)
-* **wlan0** configured using DHCP (192.168.1.123)
+* **wlan0** configured using DHCP (192.168.1.123, or 'marcopolo' in the example above)
 
 My xNAV550 had its IP address changed to 192.168.2.62.
 
 Effectively I have separated my xNAV550's network from my office network but I can still talk to the xNAV550, see its outputs and send commands to it (like the command to force initialisation). You do not need separate networks and it will work fine on one network.
 
-The web page templates are pretty basic and you may want to change/improve them. You can use the pages as examples and add custom pages. The web pages are saved in the "static" directory.
+The web page templates are pretty basic and you may want to change/improve them. You can use the pages as examples and add custom pages. The web pages are saved in the "static" directory. "Speed.html" is the most comprehensive page, but that also makes it the most complex. I have documented this page more than the others. Hopefully it will all make sense.
 
 The software includes:
 * Socket to receive OxTS NCOM data on port 3000
