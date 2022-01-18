@@ -265,8 +265,8 @@ class NcomRx(object):
             
         if self.nav['NavStatus'] in [3,4,20,21,22]:
             # Decode Batch B
-            self.nav['Lat'] = struct.unpack("<d",self.ncomBytes[23:31])[0]
-            self.nav['Lon'] = struct.unpack("<d",self.ncomBytes[31:39])[0]
+            self.nav['Lat'] = struct.unpack("<d",self.ncomBytes[23:31])[0] # Note: radians
+            self.nav['Lon'] = struct.unpack("<d",self.ncomBytes[31:39])[0] # Note: radians
             self.nav['Alt'] = struct.unpack("<f",self.ncomBytes[39:43])[0]
             self.nav['Vn'] = int.from_bytes(self.ncomBytes[43:46], byteorder = 'little', signed=True) * VEL2MPS
             self.nav['Ve'] = int.from_bytes(self.ncomBytes[46:49], byteorder = 'little', signed=True) * VEL2MPS

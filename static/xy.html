@@ -94,7 +94,7 @@
         {
             if (Object.keys(base).length == 0)
               base = {Lat:nav.Lat, Lon:nav.Lon};
-            XY = [(nav.Lat-base.Lat)*6370000, (nav.Lon-base.Lon)*6370000*Math.sin(base.Lat)]
+            XY = [(nav.Lat-base.Lat)*6370000, (nav.Lon-base.Lon)*6370000*Math.cos(base.Lat)]
             if (xy.Wf.length < 200)
               xy.addRows([[XY[0],XY[1]]]);
             else
