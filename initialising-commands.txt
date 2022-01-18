@@ -1,6 +1,0 @@
-!set init aidpos 52.23521643 -1.46044376 167
-!set init aidvel 0 0 0
-!set init hea 90
-!set time target 2000 1234
-
-base 52.23521643 -1.46044376 167
