@@ -24,18 +24,18 @@ Follow these steps to get generic aiding to work on your OxTS inertial navigatio
 * Install python 3 (I was using 3.9.2 on Raspberry Pi Os)
 * Download this branch of the repository
 * Run **python main.py**
-* Go to web page http://<ip address>:8000 _(where <ip address> is the ip address of your computer)_
+* Go to web page http://\<ip address\>:8000 _(where \<ip address\> is the ip address of your computer)_
 * Find the IP address of your INS
 * Click on the GAD page
 
 For generic aiding work we need to initialise the INS at roughly the correct place and with roughly the correct heading.
 
-* In the "Send" box at the top enter _base <Lat> <Lon> <Alt>_ where _<Lat>_ is your latitude in degrees, _<Lon>_ is your longitude in degrees and _<Alt>_ is your altitude in m. OxTS generally outputs the elipsodial altitude, so this is the altitude you should use.
+* In the "Send" box at the top enter _base \<Lat\> \<Lon\> \<Alt\>_ where _\<Lat\>_ is your latitude in degrees, _\<Lon\>_ is your longitude in degrees and _\<Alt\>_ is your altitude in metres. OxTS generally outputs the elipsodial altitude, so this is the altitude you should use.
 * In the "Send" box enter _!set time 2000 1234_ where _2000_ is the GPS week and _1234_ is the number of seconds into the GPS week. These do not need to be exact and using "!set time 2000 1234" will work and the INS will report a time in 6th June 2018. The GpsTime field should show the time.
 * Click on _Position A_. The "GNSS Position Mode" at the bottom of the page should show 34.
-* Enter _!set init aidpos <Lat> <Lon> <Alt>_ with the same latitude, longtitude and altitude as before.
+* Enter _!set init aidpos \<Lat\> \<Lon\> \<Alt\>_ with the same latitude, longtitude and altitude as before.
 * Enter _!set init aidvel 0 0 0_ to set the initial velocity to zero.
-* Enter _!set init hea <heading>_ where _<heading>_ is the approximate heading of the INS.
+* Enter _!set init hea \<heading\>_ where _\<heading\>_ is the approximate heading of the INS.
 
 The INS should initialise. The Speed box should show the current speed (about zero), the Heading box should show the current heading. The XY grid will show the approximate position in metres, compared to the base latitude and longitude entered originally.
 
@@ -47,5 +47,5 @@ The following options are available:
 * Click on _Position B_ to start sending position updates for a position that is about 50 cm west of the base position.
 * Click on _Position C_ to start sending position updates for a position that is about 40 cm north of the base position.
 * Click on _Position D_ to start sending position updates for a position that is about 50 cm west and 40 cm north of the base position.
-* Enter _att <heading> <pitch> <roll>_ (for example "att 90 0 0") to start sending attitude updates and _att stop_ to stop sending attitude updates. (No user interface button is provided).
+* Enter _att \<heading\> \<pitch\> \<roll\>_ (for example "att 90 0 0") to start sending attitude updates and _att stop_ to stop sending attitude updates. (No user interface button is provided).
 
