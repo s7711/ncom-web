@@ -57,6 +57,7 @@ class NcomRxThread(threading.Thread):
         ncomrx.NcomRx.__init__(self)
         self.keepGoing = True
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Non-exclusive use
         self.sock.bind(('', 3000))
         self.nrx = {}
         self.start()
@@ -87,9 +88,13 @@ class NcomRxThread(threading.Thread):
             if crc not in self.nrx[addr]['crcList']:
                 self.nrx[addr]['crcList'].append(crc)                
                 self.nrx[addr]['decoder'].decode(nb, machineTime=myTime)
-                # And process all possible data
+                # And process all possible data. There can be more than
+                # one packet in nb but the decoder stops each time it has
+                # a full packet
                 while self.nrx[addr]['decoder'].decode(b'', machineTime=myTime):
-                    pass
+                    pass # For this implementation just pass
+                    # If you need to act on every packet received then
+                    # add code (e.g. a callback) here
             else:
                 self.nrx[addr]['decoder'].connection['repeatedUdp'] += 1
                                         

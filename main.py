@@ -129,7 +129,7 @@ def serve_json():
 			ws.send_message_all(connection_json, path="/connection.json?ip="+addr)
 
 # Start the program
-print("Use Ctrl-C to quit")
+print("Use Ctrl-C (Linux) or System Break (Windows) to quit")
 threading.Thread(target=serve_json).start()
 
 
