@@ -42,5 +42,3 @@ There are many improvements that need to be made:
 * Some better templates are needed
 * The formatting of comments could be a little more consistent. I started one way and then changed. Sorry
 * The web server claims poor security (I don't know why) so it is probably best not to use it on the internet
-
-The licensing for the Google Chart is not clear. It uses an MIT license but there may be some usage restriction so you cannot/shouldn't use it on an intranet. You may find it doesn't work unless the browser you are using has internet access. If I have violated a license Google then I'm sorry and I will remove it.

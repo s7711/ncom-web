@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <title>OxTS Status</title>
-  <meta charset="utf-8">
-  <link rel="stylesheet" type="text/css" href="style.css">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" href="favicon.png">
-</head>
+  <head>
+    <title>OxTS Status</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="favicon.png">
+    <script type="text/javascript" src="messages.js"></script>  
+  </head>
 <body>
   <h1><a href="index.html" style=text-decoration:none>Navigation Status</a></h1>
   <p>
@@ -132,6 +133,23 @@
     <tr> <td>Heading misalignment</td>     <td id="mf3_HeadingMisAlign">---</td>  <td id="mf3_HeadingMisAlignAcc">---</td><td>deg</td> </tr>
   </table>
 
+  <h2>Local reference frame</h2>
+    <table border=1 class="dataframe, dataframe2">
+    <thead>
+      <tr style="text-align:right;">
+        <th>Measurement</th><th>Value</th><th>Units</th>
+      </tr>
+    </thead>
+    <tr> <td>Reference frame latitude</td>  <td id="mf8_RefFrameLat">---</td><td>deg</td> </tr>
+    <tr> <td>Reference frame longitude</td> <td id="mf8_RefFrameLon">---</td><td>deg</td> </tr>
+    <tr> <td>Reference frame altitude</td>  <td id="mf8_RefFrameAlt">---</td><td>m</td> </tr>
+    <tr> <td>Reference frame heading</td>   <td id="mf3_RefFrameHeading">---</td><td>deg</td> </tr>
+    <tr> <td>Reference frame latitude radius</td>    <td id="mf1_RefLatRadius">---</td><td>m/deg</td> </tr>
+    <tr> <td>Reference frame longitude radius</td>   <td id="mf3_RefLonRadius">---</td><td>m/deg</td> </tr>
+    <tr> <td>Reference frame heading cos</td>   <td id="mf3_RefHeadingCos">---</td><td>-</td> </tr>
+    <tr> <td>Reference frame heading sin</td>   <td id="mf3_RefHeadingSin">---</td><td>-</td> </tr>
+  </table>
+
   <h2>Internal timing</h2>
     <table border=1 class="dataframe, dataframe2">
     <thead>
@@ -193,83 +211,38 @@
     <tr> <td>GNSS secondary packets too old</td>  <td id="mi_GpsSecondaryOldPkts">---</td> <td></td> </tr>
   </table>
 
+  <h2>Configuration</h2>
+    <table border=1 class="dataframe, dataframe2">
+    <thead>
+      <tr style="text-align:right;">
+        <th>Measurement</th><th>Value</th><th>Units</th>
+      </tr>
+    </thead>
+    <tr> <td>Vehicle heading</td>           <td id="mf1_VehHeading">---</td>        <td>deg</td> </tr>
+    <tr> <td>Vehicle pitch</td>             <td id="mf1_VehPitch">---</td>          <td>deg</td> </tr>
+    <tr> <td>Vehicle roll</td>              <td id="mf1_VehRoll">---</td>           <td>deg</td> </tr>
+    <tr> <td>Remote lever arm X</td>        <td id="mf1_RemoveLeverArmX">---</td>   <td>m</td> </tr>
+    <tr> <td>Remote lever arm Y</td>        <td id="mf1_RemoveLeverArmY">---</td>   <td>m</td> </tr>
+    <tr> <td>Remote lever arm Z</td>        <td id="mf1_RemoveLeverArmZ">---</td>   <td>m</td> </tr>
+    <tr> <td>Zero velocity lever arm X</td> <td id="mf1_ZeroVelLeverArmX">---</td>  <td>m</td> </tr>
+    <tr> <td>Zero velocity lever arm Y</td> <td id="mf1_ZeroVelLeverArmY">---</td>  <td>m</td> </tr>
+    <tr> <td>Zero velocity lever arm Z</td> <td id="mf1_ZeroVelLeverArmZ">---</td>  <td>m</td> </tr>
+    
+    <tr> <td>Option: level</td>             <td id="mi_OptionLevel">- - -</td>      <td></td></tr>
+    <tr> <td>Option: vibration</td>         <td id="mi_OptionVibration">- - -</td>  <td></td></tr>
+    <tr> <td>Option: GNSS accuracy</td>     <td id="mi_OptionGpsAcc">- - -</td>     <td></td></tr>
+    <tr> <td>Option: UDP</td>               <td id="mi_OptionUdp">- - -</td>        <td></td></tr>
+    <tr> <td>Option: serial 1</td>          <td id="mi_OptionSer1">- - -</td>       <td></td></tr>
+    <tr> <td>Option: serial 2</td>          <td id="mi_OptionSer2">- - -</td>       <td></td></tr>
+    <tr> <td>Option: heading</td>           <td id="mi_OptionHeading">- - -</td>    <td></td></tr>
+    <tr> <td>Option: heave</td>             <td id="mi_OptionHeave">- - -</td>      <td></td></tr>
+    
+  </table>
+
 
 
   <script language="javascript" type="text/javascript">
-    function init()
-    {
-      disconnected = true
-      doConnect();
-    }
-
-    timer = setInterval(function() { 
-        if(disconnected == true) {
-          doConnect();
-        }
-      }, 5000)
-
-    function doConnect()
-    {
-      const urlParams = new URLSearchParams(window.location.search);
-      const ip = urlParams.get('ip');
-
-      websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/status.json?ip="+ip);
-      websocket.onopen = function(evt) { onOpen(evt) };
-      websocket.onclose = function(evt) { onClose(evt) };
-      websocket.onmessage = function(evt) { onMessage(evt) };
-      websocket.onerror = function(evt) { onError(evt) };
-    }
-
-    function onOpen(evt)
-    {
-      disconnected = false;
-    }
-
-    function onClose(evt)
-    {
-      disconnected = true;
-    }
-
-    function onMessage(evt)
-    {
-      let status = JSON.parse(evt.data);
-      
-      // Employ a cheat to make it easier to update the document
-      // All <td> elements with an id starting with "m_"
-      // are assumed to be measurements in status
-      // This for-loop updates them
-      for (el of document.getElementsByTagName("td") )
-      {
-        if (/^m[is]_/.test(el.id))
-          updateId(status,el.id);
-        else if (/^mf[0-9]_/.test(el.id))
-        {
-          let precision = parseInt(el.id[2]);
-          updateIdF(status,el.id, precision);
-        }
-      }
-    }
     
-    function updateId(status,id)
-    {
-      s = status[id.substring(3)];
-      if (s != undefined)
-        document.getElementById(id).innerHTML = s;
-    }
-    
-    function updateIdF(status,id,precision)
-    {
-      s = status[id.substring(4)];
-      if (s != undefined)
-        document.getElementById(id).innerHTML = s.toFixed(precision);      
-    }
-
-    function onError(evt)
-    {
-      websocket.close();
-      disconnected = true;
-    }
-
     function doit_onkeypress(event)
     {
       if (event.keyCode == 13 || event.which == 13)
@@ -277,8 +250,6 @@
         websocket.send(document.getElementById("send_text").value);
       }
     }
-
-    window.addEventListener("load", init, false);
 
   </script>
 </body>

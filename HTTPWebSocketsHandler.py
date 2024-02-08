@@ -28,6 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # and https://github.com/SevenW/Plugwise-2-py/tree/master/swutil
 # With simplifications (auth removed, some log_messages commented out)
 
+# Version 220302 - Added sendLock to protect _send_message()
+
 from http.server import SimpleHTTPRequestHandler
 import struct
 from base64 import b64encode
@@ -50,6 +52,10 @@ class HTTPWebSocketsHandler(SimpleHTTPRequestHandler):
     _opcode_close = 0x8
     _opcode_ping = 0x9
     _opcode_pong = 0xa
+    
+    # The sendLock is used so only one thread can send on a websocket
+    # at the same time. Had problems without it.
+    _sendLock = threading.Lock()
     
     ws_connected = False # True when websocket is connected
     
@@ -150,29 +156,30 @@ class HTTPWebSocketsHandler(SimpleHTTPRequestHandler):
                 pass
         
     def _send_message(self, opcode, message):
-        #self.log_message("_send_message: opcode: %02X msg: %s" % (opcode, message))
-        try:
-            #use of self.wfile.write gives socket exception after socket is closed. Avoid.
-            self.request.send((0x80 + opcode).to_bytes(1, 'big'))
-            length = len(message)
-            if length <= 125:
-                self.request.send(length.to_bytes(1, 'big'))
-            elif length >= 126 and length <= 65535:
-                self.request.send((126).to_bytes(1, 'big'))
-                self.request.send(struct.pack(">H", length))
-            else:
-                self.request.send((127).to_bytes(1, 'big'))
-                self.request.send(struct.pack(">Q", length))
-            if length > 0:
-                self.request.send(message.encode('utf-8'))
-        except socket.error as e:
-            #websocket content error, time-out or disconnect.
-            self.log_message("SND: Close connection: Socket Error %s" % str(e.args))
-            self._ws_close()
-        except Exception as err:
-            #unexpected error in websocket connection.
-            self.log_error("SND: Exception: in _send_message: %s" % str(err.args))
-            self._ws_close()
+        with self._sendLock:
+            #self.log_message("_send_message: opcode: %02X msg: %s" % (opcode, message))
+            try:
+                #use of self.wfile.write gives socket exception after socket is closed. Avoid.
+                self.request.send((0x80 + opcode).to_bytes(1, 'big'))
+                length = len(message)
+                if length <= 125:
+                    self.request.send(length.to_bytes(1, 'big'))
+                elif length >= 126 and length <= 65535:
+                    self.request.send((126).to_bytes(1, 'big'))
+                    self.request.send(struct.pack(">H", length))
+                else:
+                    self.request.send((127).to_bytes(1, 'big'))
+                    self.request.send(struct.pack(">Q", length))
+                if length > 0:
+                    self.request.send(message.encode('utf-8'))
+            except socket.error as e:
+                #websocket content error, time-out or disconnect.
+                self.log_message("SND: Close connection: Socket Error %s" % str(e.args))
+                self._ws_close()
+            except Exception as err:
+                #unexpected error in websocket connection.
+                self.log_error("SND: Exception: in _send_message: %s" % str(err.args))
+                self._ws_close()
 
     def _handshake(self):
         # self.log_message("_handshake()")

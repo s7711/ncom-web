@@ -6,6 +6,7 @@
     <link rel="stylesheet" type="text/css" href="style.css">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.png">
+    <script type="text/javascript" src="messages.js"></script>  
   </head>
   <body>
     <h1><a href="index.html" style=text-decoration:none>Nav decoder</a></h1>
@@ -16,101 +17,38 @@
       <thead>
         <tr> <th>Measurement</th>  <th>Value</th> <th>Units</th> </tr>
       </thead>
-      <tr> <td>GpsTime</td>         <td id="GpsTime">---</td> <td></td> </tr>
-      <tr> <td>UtcTime</td>         <td id="UtcTime">---</td> <td></td> </tr>
-      <tr> <td>Latitude</td>        <td id="Lat">---</td> <td>deg</td> </tr>
-      <tr> <td>Longitude</td>       <td id="Lon">---</td> <td>deg</td> </tr>
-      <tr> <td>Altitude</td>        <td id="Alt">---</td> <td>m</td> </tr>
-      <tr> <td>Velocity North</td>  <td id="Vn">---</td> <td>m/s</td> </tr>
-      <tr> <td>Velocity East</td>   <td id="Ve">---</td> <td>m/s</td> </tr>
-      <tr> <td>Velocity Down</td>   <td id="Vd">---</td> <td>m/s</td> </tr>
-      <tr> <td>Acceleration X</td>  <td id="Ax">---</td> <td>m/s&sup2;</td> </tr>
-      <tr> <td>Acceleration Y</td>  <td id="Ay">---</td> <td>m/s&sup2;</td> </tr>
-      <tr> <td>Acceleration Z</td>  <td id="Az">---</td> <td>m/s&sup2;</td> </tr>
-      <tr> <td>Heading</td>         <td id="Heading">---</td> <td>deg</td> </tr>
-      <tr> <td>Pitch</td>           <td id="Pitch">---</td> <td>deg</td> </tr>
-      <tr> <td>Roll</td>            <td id="Roll">---</td> <td>deg</td> </tr>
-      <tr> <td>Ang Rate X</td>      <td id="Wx">---</td> <td>deg/s</td> </tr>
-      <tr> <td>Ang Rate Y</td>      <td id="Wy">---</td> <td>deg/s</td> </tr>
-      <tr> <td>Ang Rate Z</td>      <td id="Wz">---</td> <td>deg/s</td> </tr>
+      <tr> <td>GpsTime</td>         <td id="ms_GpsTime">---</td> <td></td> </tr>
+      <tr> <td>UtcTime</td>         <td id="ms_UtcTime">---</td> <td></td> </tr>
+      <tr> <td>Latitude</td>        <td id="mf8_LatDeg">---</td> <td>deg</td> </tr>
+      <tr> <td>Longitude</td>       <td id="mf8_LonDeg">---</td> <td>deg</td> </tr>
+      <tr> <td>Altitude</td>        <td id="mf3_Alt">---</td> <td>m</td> </tr>
+      <tr> <td>Velocity North</td>  <td id="mf2_Vn">---</td> <td>m/s</td> </tr>
+      <tr> <td>Velocity East</td>   <td id="mf2_Ve">---</td> <td>m/s</td> </tr>
+      <tr> <td>Velocity Down</td>   <td id="mf2_Vd">---</td> <td>m/s</td> </tr>
+      <tr> <td>Acceleration X</td>  <td id="mf2_Ax">---</td> <td>m/s&sup2;</td> </tr>
+      <tr> <td>Acceleration Y</td>  <td id="mf2_Ay">---</td> <td>m/s&sup2;</td> </tr>
+      <tr> <td>Acceleration Z</td>  <td id="mf2_Az">---</td> <td>m/s&sup2;</td> </tr>
+      <tr> <td>Heading</td>         <td id="mf2_Heading">---</td> <td>deg</td> </tr>
+      <tr> <td>Pitch</td>           <td id="mf2_Pitch">---</td> <td>deg</td> </tr>
+      <tr> <td>Roll</td>            <td id="mf2_Roll">---</td> <td>deg</td> </tr>
+      <tr> <td>Ang Rate X</td>      <td id="mf2_Wx">---</td> <td>deg/s</td> </tr>
+      <tr> <td>Ang Rate Y</td>      <td id="mf2_Wy">---</td> <td>deg/s</td> </tr>
+      <tr> <td>Ang Rate Z</td>      <td id="mf2_Wz">---</td> <td>deg/s</td> </tr>
     </table>
 
     <script language="javascript" type="text/javascript">
-      function init()
-      {
-        disconnected = true
-        doConnect();
-      }
 
-      timer = setInterval(function() { 
-          if(disconnected == true) {
-            doConnect();
-          }
-        }, 5000)
-
-      function doConnect()
+      // Create onCalculations, which is then called by message.js
+      // and where we calculate additional measurements for display
+      function onCalculations(message)
       {
-        const urlParams = new URLSearchParams(window.location.search);
-        const ip = urlParams.get('ip');
-        
-        websocket = new WebSocket("ws://"+window.location.hostname+":"+window.location.port+"/nav.json?ip="+ip);
-        websocket.onopen = function(evt) { onOpen(evt) };
-        websocket.onclose = function(evt) { onClose(evt) };
-        websocket.onmessage = function(evt) { onMessage(evt) };
-        websocket.onerror = function(evt) { onError(evt) };
-      }
-
-      function onOpen(evt)
-      {
-        disconnected = false;
-      }
-
-      function onClose(evt)
-      {
-        disconnected = true;
-      }
-
-      function onMessage(evt)
-      {
-        let nav = JSON.parse(evt.data);
-        if (nav.UtcTime) nav.UtcTimeJ = new Date(nav.UtcTime)
-        document.getElementById("GpsTime").innerHTML = nav.GpsTime;
-        document.getElementById("UtcTime").innerHTML = nav.UtcTimeJ;
-        document.getElementById("Lat").innerHTML = (nav.Lat*57.295779513).toFixed(8);
-        document.getElementById("Lon").innerHTML = (nav.Lon*57.295779513).toFixed(8);
-        document.getElementById("Alt").innerHTML = (nav.Alt*1.0).toFixed(3);
-        document.getElementById("Vn").innerHTML = (nav.Vn*1.0).toFixed(2);
-        document.getElementById("Ve").innerHTML = (nav.Ve*1.0).toFixed(2);
-        document.getElementById("Vd").innerHTML = (nav.Vd*1.0).toFixed(2);
-        document.getElementById("Ax").innerHTML = (nav.Ax*1.0).toFixed(2);
-        document.getElementById("Ay").innerHTML = (nav.Ay*1.0).toFixed(2);
-        document.getElementById("Az").innerHTML = (nav.Az*1.0).toFixed(2);
-        document.getElementById("Heading").innerHTML = (nav.Heading*1.0).toFixed(2);
-        document.getElementById("Pitch").innerHTML = (nav.Pitch*1.0).toFixed(2);
-        document.getElementById("Roll").innerHTML = (nav.Roll*1.0).toFixed(2);
-        document.getElementById("Wx").innerHTML = (nav.Wx*1.0).toFixed(2);
-        document.getElementById("Wy").innerHTML = (nav.Wy*1.0).toFixed(2);
-        document.getElementById("Wz").innerHTML = (nav.Wz*1.0).toFixed(2);
-      }
-      
-      function updateId(status,id)
-      {
-        s = status[id.substring(3)];
-        if (s != undefined)
-          document.getElementById(id).innerHTML = s;
-      }
-      
-      function updateIdF(status,id,precision)
-      {
-        s = status[id.substring(4)];
-        if (s != undefined)
-          document.getElementById(id).innerHTML = s.toFixed(precision);      
-      }
-
-      function onError(evt)
-      {
-        websocket.close();
-        disconnected = true;
+        if('nav' in message)
+        {
+          let nav = message.nav;
+          // Display Lat/Lon in degrees (not radians)
+          nav.LatDeg = nav.Lat*57.295779513;
+          nav.LonDeg = nav.Lon*57.295779513;
+        }
       }
 
       function doit_onkeypress(event)
@@ -120,8 +58,6 @@
           websocket.send(document.getElementById("send_text").value);
         }
       }
-
-      window.addEventListener("load", init, false);
 
     </script>
   </body>

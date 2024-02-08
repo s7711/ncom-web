@@ -42,6 +42,7 @@ Decodes measurements into dictionaries
 
 import struct
 import datetime
+import math
 
 ########################################################################
 # Definitions: from NComRx.c
@@ -117,9 +118,20 @@ SUPPLYV2V           = 0.1                 # Units of 0.1 V
 SP2M                = 1e-3                # Units of 1mm
 
 RAD2DEG             = 57.29577951308232   # 180/pi
+DEG2RAD             = 1.0/RAD2DEG
+
+
+# WGS-84 constants, for reference frame calculations
+EARTH_EQUAT_RADIUS  = (6378137.0)         # m
+EARTH_POLAR_RADIUS  = (6356752.3142)      # m
+EARTH_MEAN_RADIUS   = (6367435.68)        # m
+EARTH_FLATTENING    = (3.35281066475e-3)
+EARTH_ECCENTRICITY  = (0.0818191908426)
+
 
 ########################################################################
 # Other constants
+# Note: GPS time isn't really UTC, so be careful with this
 GPS_STARTTIME = datetime.datetime(1980,1,6,tzinfo=datetime.timezone.utc)
 
 
@@ -265,8 +277,8 @@ class NcomRx(object):
             
         if self.nav['NavStatus'] in [3,4,20,21,22]:
             # Decode Batch B
-            self.nav['Lat'] = struct.unpack("<d",self.ncomBytes[23:31])[0]
-            self.nav['Lon'] = struct.unpack("<d",self.ncomBytes[31:39])[0]
+            self.nav['Lat'] = struct.unpack("<d",self.ncomBytes[23:31])[0] # Note: radians
+            self.nav['Lon'] = struct.unpack("<d",self.ncomBytes[31:39])[0] # Note: radians
             self.nav['Alt'] = struct.unpack("<f",self.ncomBytes[39:43])[0]
             self.nav['Vn'] = int.from_bytes(self.ncomBytes[43:46], byteorder = 'little', signed=True) * VEL2MPS
             self.nav['Ve'] = int.from_bytes(self.ncomBytes[46:49], byteorder = 'little', signed=True) * VEL2MPS
@@ -692,6 +704,8 @@ class NcomRx(object):
         self.status['Trig1FallingCount'] = statusBytes[7]
 
     # decodeStatus25 not decoded: reserved
+    # Status 25 used by older OxTS systems and unlikely to be output
+    # by any firmware after 2010. Status 66/67 used now.
     
     def decodeStatus26(self,statusBytes):
         # Remote lever-arm
@@ -1299,6 +1313,7 @@ class NcomRx(object):
         
         self.status['RefFrameLon'] = int.from_bytes(statusBytes[4:8], byteorder = 'little', signed=True) * FINEANG2RAD * RAD2DEG
         if statusBytes[4:8] == b'\x00\x00\x00\x80': del self.status['RefFrameLon']
+        self.computeRefFrame()
 
 
     def decodeStatus67(self,statusBytes):
@@ -1308,7 +1323,41 @@ class NcomRx(object):
         
         self.status['RefFrameHeading'] = int.from_bytes(statusBytes[4:8], byteorder = 'little', signed=True) * FINEANG2RAD * RAD2DEG
         if statusBytes[4:8] == b'\x00\x00\x00\x80': del self.status['RefFrameHeading']
+        self.computeRefFrame()
 
+
+    def computeRefFrame(self):
+        # Compute reference frame if all the information needed is available
+        # Note that, if the reference frame changes then there will be a glitch
+        # because the reference frame lat/lon won't match the refernce frame alt/heading
+        # Not sure how to avoid this. Should go away quite quickly when both are updated.
+        if 'RefFrameLat' in self.status \
+        and 'RefFrameLon' in self.status \
+        and 'RefFrameAlt' in self.status \
+        and 'RefFrameHeading' in self.status:
+            # Compute the local reference frame constants
+            # These are used to compute LocalX, LocalY, etc. in self.nav
+            tmp = EARTH_ECCENTRICITY * math.sin(self.status['RefFrameLat']*DEG2RAD)
+            tmp = 1.0 - tmp * tmp
+            sqt = math.sqrt(tmp)
+            # These are the earth radii
+            rho_e = EARTH_EQUAT_RADIUS * (1.0 - EARTH_ECCENTRICITY * EARTH_ECCENTRICITY) / (sqt * tmp)
+            rho_n = EARTH_EQUAT_RADIUS / sqt
+            # Set the Ref...Radius in units of m/degree
+            self.status['RefLatRadius'] = (rho_e + self.status['RefFrameAlt']) * DEG2RAD
+            self.status['RefLonRadius'] = (rho_n + self.status['RefFrameAlt']) * math.cos(self.status['RefFrameLat'] * DEG2RAD) * DEG2RAD
+            # For easier rotation from Northing/Easting to XY
+            self.status['RefHeadingCos'] = math.cos(self.status['RefFrameHeading'] * DEG2RAD)
+            self.status['RefHeadingSin'] = math.sin(self.status['RefFrameHeading'] * DEG2RAD)
+        else:
+            # Remove any computed values
+            try:
+                del self.status['RefLatRadius']
+                del self.status['RefLonRadius']
+                del self.status['RefHeadingCos']
+                del self.status['RefHeadingSin']
+            except:
+                pass
 
     def decodeStatus68(self,statusBytes):
         # Additional slip point 5

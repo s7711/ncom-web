@@ -44,3 +44,81 @@ table.dataframe2 th {
 table.dataframe2 tr:nth-child(odd)		{ background-color:#eee; }
 table.dataframe2 tr:nth-child(even)	{ background-color:#fff; }
 table.dataframe2 tr:hover            { background-color: #FFD0D0;}
+
+
+.rcorners1 {
+  border-radius: 25px;
+  background: #ca181c;
+  padding: 20px;
+  margin: 10px;
+}  
+.meas1 {
+  font-size: 20px;
+  font-weight: bold;
+  color: white;     
+  margin: 0px; 
+}
+.value1 {
+  font-size: 80px;
+  font-weight: bold;
+  text-align: right;
+  color: white;      
+  margin: 0px; 
+}
+.rcorners2 {
+  border-radius: 12px;
+  border: 2px solid #ca181c;
+  padding: 10px;
+  margin: 5px;
+}  
+.meas2 {
+  font-size: 10px;
+  font-weight: bold;
+  color: #ca181c;     
+  margin: 0px; 
+}
+.value2 {
+  font-size: 40px;
+  font-weight: bold;
+  text-align: right;
+  color:  #ca181c;      
+  margin: 0px; 
+}
+.loadbar
+{
+     border-radius: 4px;
+     width:10px;
+     height:40px;
+     border:1px solid #ca181c;
+     position:relative; 
+}
+.bar
+{
+    width:100%;
+    display:block;        
+    font-family:arial;
+    font-size:12px; 
+    background-color:#ca181c;
+    position:absolute;
+    bottom:0;        
+}
+.gadButton
+{
+  color:white;
+  background-color:#ca181c;
+  border-radius: 10px;
+  border: 5px solid #ca181c;
+  width: 100%;
+  padding: 5px;
+  font-size: 20px;
+  margin: 10px;
+}
+.gadButton:hover
+{
+  color: #ca181c;
+  background-color: white;
+}
+.gadButton:active
+{
+  transform: translateY(1px) translateX(1px);
+}
